@@ -1,0 +1,1 @@
+This package contains the UI for editing the active scan configuration.

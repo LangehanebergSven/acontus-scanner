@@ -1,0 +1,1 @@
+This package contains the main screen and navigation components for the app.

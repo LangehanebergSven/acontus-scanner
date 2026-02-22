@@ -5,16 +5,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavType
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import com.example.scanner.ui.editconfig.EditConfigurationScreen
+import com.example.scanner.ui.main.MainScreen
 import com.example.scanner.ui.process.ProcessConfigurationScreen
-import com.example.scanner.ui.scanning.ScanningScreen
+import com.example.scanner.ui.scanning.ScanningViewModel
 import com.example.scanner.ui.theme.ScannerTheme
 import com.example.scanner.ui.view.login.LoginScreen
-import com.example.scanner.ui.view.settings.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -36,35 +36,38 @@ fun ScannerApp() {
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
             LoginScreen(onLoginSuccess = {
-                navController.navigate("settings") {
+                navController.navigate("main") {
                     popUpTo("login") { inclusive = true }
                 }
             })
         }
-        composable("settings") {
-            SettingsScreen(
+        composable("main") {
+            MainScreen(
+                rootNavController = navController,
                 onLogout = {
                     navController.navigate("login") {
-                        popUpTo("settings") { inclusive = true }
+                        popUpTo("main") { inclusive = true }
                     }
-                },
-                onStartProcess = {
-                    navController.navigate("process_configuration")
                 }
             )
         }
         composable("process_configuration") {
             ProcessConfigurationScreen(
-                onNavigateToScanning = { processId ->
-                    navController.navigate("scanning/$processId")
+                onNavigateToScanning = {
+                    navController.popBackStack()
                 }
             )
         }
-        composable(
-            route = "scanning/{processId}",
-            arguments = listOf(navArgument("processId") { type = NavType.LongType })
-        ) {
-            ScanningScreen()
+        composable("edit_configuration") {
+            // By getting the back stack entry for "main", Hilt provides the SAME
+            // ViewModel instance that is used within the MainScreen's navigation.
+            val scanningViewModel: ScanningViewModel = hiltViewModel(
+                navController.getBackStackEntry("main")
+            )
+            EditConfigurationScreen(
+                navController = navController,
+                viewModel = scanningViewModel
+            )
         }
     }
 }

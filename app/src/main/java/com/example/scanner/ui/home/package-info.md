@@ -1,0 +1,1 @@
+This package contains the home screen UI.

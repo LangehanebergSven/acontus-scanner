@@ -1,9 +1,9 @@
 package com.example.scanner.ui.scanning
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.scanner.data.model.BookingReason
+import com.example.scanner.data.model.ScanProcess
 import com.example.scanner.data.model.ScannedItem
 import com.example.scanner.data.model.Warehouse
 import com.example.scanner.data.repository.CacheRepository
@@ -18,17 +18,17 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ScanningViewModel @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
     private val scanRepository: ScanRepository,
     private val cacheRepository: CacheRepository
 ) : ViewModel() {
 
-    private val processId: Long = savedStateHandle.get<Long>("processId")!!
+    // TODO: Replace with actual logged-in employee ID
+    private val employeeId = "12345"
 
     private val _uiState = MutableStateFlow<ScanningUiState>(ScanningUiState.Loading)
     val uiState: StateFlow<ScanningUiState> = _uiState.asStateFlow()
-
-    // Active configuration for the NEXT scan
+    
+    // ... active configuration StateFlows remain the same ...
     private val _activeWarehouse = MutableStateFlow<Warehouse?>(null)
     val activeWarehouse: StateFlow<Warehouse?> = _activeWarehouse.asStateFlow()
 
@@ -41,48 +41,69 @@ class ScanningViewModel @Inject constructor(
     private val _activeBatchNumber = MutableStateFlow<String?>(null)
     val activeBatchNumber: StateFlow<String?> = _activeBatchNumber.asStateFlow()
 
+
     init {
-        loadScanData()
+        loadActiveProcess()
     }
 
-    private fun loadScanData() {
+    fun loadActiveProcess() {
         viewModelScope.launch {
             _uiState.value = ScanningUiState.Loading
             try {
-                val process = scanRepository.getProcessById(processId)
+                val process = scanRepository.getLatestProcessForEmployee(employeeId)
                 if (process == null) {
-                    _uiState.value = ScanningUiState.Error("Process not found")
+                    _uiState.value = ScanningUiState.NoProcess
                     return@launch
                 }
-
-                val warehouse = cacheRepository.getWarehouseById(process.warehouseId)
-                val bookingReason = cacheRepository.getBookingReasonById(process.bookingReasonId)
-
-                if (warehouse == null || bookingReason == null) {
-                    _uiState.value = ScanningUiState.Error("Configuration data missing")
-                    return@launch
-                }
-                
-                // Initialize active configuration with process defaults
-                _activeWarehouse.value = warehouse
-                _activeBookingReason.value = bookingReason
-
-                val scannedItems = scanRepository.getScannedItemsForProcess(processId)
-
-                _uiState.value = ScanningUiState.Success(
-                    // These are the original process values, not the active ones
-                    processWarehouse = warehouse,
-                    processBookingReason = bookingReason,
-                    scannedItems = scannedItems,
-                    allWarehouses = cacheRepository.getWarehouses(),
-                    allBookingReasons = cacheRepository.getBookingReasons()
-                )
+                loadScanData(process)
             } catch (e: Exception) {
-                _uiState.value = ScanningUiState.Error("Failed to load scan data: ${e.message}")
+                _uiState.value = ScanningUiState.Error("Failed to load active process: ${e.message}")
             }
         }
     }
 
+    private suspend fun loadScanData(process: ScanProcess) {
+        val warehouse = cacheRepository.getWarehouseById(process.warehouseId)
+        val bookingReason = cacheRepository.getBookingReasonById(process.bookingReasonId)
+
+        if (warehouse == null || bookingReason == null) {
+            _uiState.value = ScanningUiState.Error("Configuration data missing")
+            return
+        }
+
+        // Initialize active configuration with process defaults
+        _activeWarehouse.value = warehouse
+        _activeBookingReason.value = bookingReason
+        _activeBestBeforeDate.value = null
+        _activeBatchNumber.value = null
+
+        val scannedItems = scanRepository.getScannedItemsForProcess(process.id)
+
+        _uiState.value = ScanningUiState.Success(
+            process = process,
+            processWarehouse = warehouse,
+            processBookingReason = bookingReason,
+            scannedItems = scannedItems,
+            allWarehouses = cacheRepository.getWarehouses(),
+            allBookingReasons = cacheRepository.getBookingReasons()
+        )
+    }
+    
+    fun cancelProcess() {
+        viewModelScope.launch {
+            // TODO: Implement process cancellation logic
+            // This will likely involve deleting the ScanProcess and ScannedItems
+            _uiState.value = ScanningUiState.NoProcess
+        }
+    }
+    
+    fun submitProcess() {
+        viewModelScope.launch {
+            // TODO: Implement process submission logic from Phase 5
+        }
+    }
+
+    // ... setActive methods remain the same ...
     fun setActiveWarehouse(warehouse: Warehouse) {
         _activeWarehouse.value = warehouse
     }
@@ -102,7 +123,9 @@ class ScanningViewModel @Inject constructor(
 
 sealed interface ScanningUiState {
     object Loading : ScanningUiState
+    object NoProcess : ScanningUiState
     data class Success(
+        val process: ScanProcess,
         val processWarehouse: Warehouse,
         val processBookingReason: BookingReason,
         val scannedItems: List<ScannedItem>,

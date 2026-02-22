@@ -7,12 +7,16 @@ import com.example.scanner.data.local.dao.WarehouseDao
 import com.example.scanner.data.local.dao.BookingReasonDao
 import com.example.scanner.data.model.BookingReason
 import com.example.scanner.data.model.Warehouse
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * Repository to manage the master data cache (48-hour expiration).
  */
+@Singleton
 class CacheRepository @Inject constructor(
     private val employeeDao: EmployeeDao,
     private val articleDao: ArticleDao,
@@ -21,12 +25,13 @@ class CacheRepository @Inject constructor(
     private val bookingReasonDao: BookingReasonDao
     // private val remoteDataSource: RemoteDataSource // To be added later
 ) {
-    // Dummy timestamp for the last sync. In a real app, this would be persisted.
-    private var lastSyncTimestamp: Long = 0
+    // In a real app, this would be persisted.
+    private val _lastSyncTimestamp = MutableStateFlow(0L)
+    val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp
 
     private fun isCacheExpired(): Boolean {
         val fortyEightHoursInMillis = TimeUnit.HOURS.toMillis(48)
-        return (System.currentTimeMillis() - lastSyncTimestamp) > fortyEightHoursInMillis
+        return (System.currentTimeMillis() - _lastSyncTimestamp.value) > fortyEightHoursInMillis
     }
 
     suspend fun invalidateCache() {
@@ -35,7 +40,7 @@ class CacheRepository @Inject constructor(
         materialDao.clearAll()
         warehouseDao.clearAll()
         bookingReasonDao.clearAll()
-        lastSyncTimestamp = 0 // Force a new sync on next data request
+        _lastSyncTimestamp.value = 0L // Force a new sync on next data request
     }
 
     suspend fun getWarehouses(): List<Warehouse> {
@@ -69,6 +74,7 @@ class CacheRepository @Inject constructor(
             Warehouse("W03", "Versandlager")
         )
         warehouseDao.insertAll(dummyWarehouses)
+        _lastSyncTimestamp.value = System.currentTimeMillis()
     }
 
     private suspend fun addDummyBookingReasons() {
@@ -79,6 +85,7 @@ class CacheRepository @Inject constructor(
             BookingReason("B04", "Inventur")
         )
         bookingReasonDao.insertAll(dummyReasons)
+        _lastSyncTimestamp.value = System.currentTimeMillis()
     }
 
     // Example function for fetching employees
