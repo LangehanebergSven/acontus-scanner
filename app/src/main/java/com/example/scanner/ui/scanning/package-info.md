@@ -1,0 +1,1 @@
+This package contains the UI and ViewModel for the main scanning screen.

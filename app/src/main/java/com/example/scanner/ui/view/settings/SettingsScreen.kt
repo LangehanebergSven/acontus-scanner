@@ -21,6 +21,7 @@ import com.example.scanner.ui.viewmodel.SettingsViewModel
 @Composable
 fun SettingsScreen(
     onLogout: () -> Unit,
+    onStartProcess: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     Scaffold { padding ->
@@ -32,6 +33,10 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Button(onClick = onStartProcess) {
+                Text("Neuen Prozess starten")
+            }
+            Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = { viewModel.onClearCacheClicked() }) {
                 Text("Cache leeren")
             }
@@ -54,8 +59,6 @@ fun SettingsScreen(
 @Composable
 fun SettingsScreenPreview() {
     ScannerTheme {
-        // This preview will not have a working ViewModel.
-        // For a more complete preview, you would use a fake ViewModel.
-        SettingsScreen(onLogout = {})
+        SettingsScreen(onLogout = {}, onStartProcess = {})
     }
 }

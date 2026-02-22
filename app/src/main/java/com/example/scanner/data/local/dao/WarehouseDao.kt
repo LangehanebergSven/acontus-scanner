@@ -14,6 +14,9 @@ interface WarehouseDao {
     @Query("SELECT * FROM warehouses")
     suspend fun getAll(): List<Warehouse>
 
+    @Query("SELECT * FROM warehouses WHERE warehouseId = :warehouseId")
+    suspend fun getById(warehouseId: String): Warehouse?
+
     @Query("DELETE FROM warehouses")
     suspend fun clearAll()
 }

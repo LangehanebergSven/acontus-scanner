@@ -68,15 +68,37 @@ This document outlines the step-by-step implementation plan for the Android Scan
 ---
 
 ## Phase 3: Core Process & Configuration
-- [ ] **Task 3.1: Initial Process Configuration**
+- [x] **Task 3.1: Initial Process Configuration**
   - Implement UI to start a new scan process.
   - Select `Buchungsgrund` (Booking Reason) and `Lager` (Warehouse) before starting.
-- [ ] **Task 3.2: Main Scanning Overview UI**
+- [x] **Task 3.2: Main Scanning Overview UI**
   - Create the main view showing the currently active configuration.
   - Implement an empty state for the scanned items list.
   - Ensure the current process auto-saves locally linked to the `Personal-Nr`.
-- [ ] **Task 3.3: Active Configuration Management**
+- [x] **Task 3.3: Active Configuration Management**
   - Implement UI/logic to update the current configuration (Warehouse, Booking Reason, MHD, Batch-Nr) on the fly during the scanning process without affecting already scanned items.
+
+---
+### **Phase 3 Summary (Context for Next Phase):**
+**Phase 3 is complete.** The core UI for starting and managing a scanning process is now implemented, including on-the-fly configuration changes.
+
+**Implementation Details:**
+*   **Navigation:**
+    *   The `MainActivity` was refactored from a simple state-based view switch to use the **Jetpack Navigation** component.
+    *   A navigation graph was defined with routes for `login`, `settings`, `process_configuration`, and `scanning`.
+    *   The `navigation-compose` dependency was added to the project.
+*   **Process Configuration:**
+    *   A new screen, `ProcessConfigurationScreen`, was created to allow users to select a Warehouse and Booking Reason before starting a scan.
+    *   `ProcessConfigurationViewModel` was implemented to fetch the required lists from the `CacheRepository` and create a new `ScanProcess` in the `ScanRepository`.
+    *   Dummy data for warehouses and booking reasons was added to the `CacheRepository` for testing.
+*   **Main Scanning UI:**
+    *   The main `ScanningScreen` was created, which displays the list of scanned items (currently empty).
+    *   A `ScanningViewModel` fetches the current process details and items based on the `processId` passed through navigation arguments.
+    *   DAOs and Repositories were updated with `getById` methods for more efficient data retrieval.
+*   **Active Configuration:**
+    *   The `ScanningScreen` now holds state for the "active" configuration (Warehouse, Booking Reason, Batch, MHD) that will be applied to newly scanned items.
+    *   The UI includes clickable headers that open selection dialogs and text fields to modify this active configuration at any time, separate from the process's initial settings.
+---
 
 ## Phase 4: Scanning & Item Management
 - [ ] **Task 4.1: Keyence SDK & Manual Input**

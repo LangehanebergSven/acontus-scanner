@@ -14,6 +14,9 @@ interface BookingReasonDao {
     @Query("SELECT * FROM booking_reasons")
     suspend fun getAll(): List<BookingReason>
 
+    @Query("SELECT * FROM booking_reasons WHERE bookingReasonId = :bookingReasonId")
+    suspend fun getById(bookingReasonId: String): BookingReason?
+
     @Query("DELETE FROM booking_reasons")
     suspend fun clearAll()
 }

@@ -4,9 +4,12 @@ import com.example.scanner.data.local.dao.ArticleDao
 import com.example.scanner.data.local.dao.BookingReasonDao
 import com.example.scanner.data.local.dao.EmployeeDao
 import com.example.scanner.data.local.dao.MaterialDao
+import com.example.scanner.data.local.dao.ScanProcessDao
+import com.example.scanner.data.local.dao.ScannedItemDao
 import com.example.scanner.data.local.dao.SqlLogDao
 import com.example.scanner.data.local.dao.WarehouseDao
 import com.example.scanner.data.repository.CacheRepository
+import com.example.scanner.data.repository.ScanRepository
 import com.example.scanner.data.repository.SyncRepository
 import com.example.scanner.data.source.DatabaseConnector
 import com.example.scanner.data.source.DatabaseConnectorImpl
@@ -36,6 +39,15 @@ object RepositoryModule {
         bookingReasonDao: BookingReasonDao
     ): CacheRepository {
         return CacheRepository(employeeDao, articleDao, materialDao, warehouseDao, bookingReasonDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideScanRepository(
+        scanProcessDao: ScanProcessDao,
+        scannedItemDao: ScannedItemDao
+    ): ScanRepository {
+        return ScanRepository(scanProcessDao, scannedItemDao)
     }
 
     @Provides
