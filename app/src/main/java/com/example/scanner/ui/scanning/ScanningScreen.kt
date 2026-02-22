@@ -13,11 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.scanner.data.model.BookingReason
 import com.example.scanner.data.model.ScannedItem
 import com.example.scanner.data.model.Warehouse
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun ScanningScreen(
@@ -26,11 +30,6 @@ fun ScanningScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isFabMenuExpanded by remember { mutableStateOf(false) }
-
-    // Reload data when the screen becomes visible
-    LaunchedEffect(Unit) {
-        viewModel.loadActiveProcess()
-    }
 
     Scaffold(
         floatingActionButton = {
@@ -124,7 +123,7 @@ fun ScanningScreen(
                             warehouse = activeWarehouse,
                             bookingReason = activeBookingReason,
                             batchNumber = activeBatchNumber,
-                            bestBeforeDate = activeBestBeforeDate?.toString() // Simplified
+                            bestBeforeDate = activeBestBeforeDate
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Divider()
@@ -162,39 +161,43 @@ private fun CompactConfigurationHeader(
     warehouse: Warehouse?,
     bookingReason: BookingReason?,
     batchNumber: String?,
-    bestBeforeDate: String?
+    bestBeforeDate: Date?
 ) {
+    val mhdFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY) }
+
     Card(elevation = CardDefaults.cardElevation(2.dp)) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                ConfigItem(label = "Lager:", value = warehouse?.name ?: "-")
-                ConfigItem(label = "Grund:", value = bookingReason?.reason ?: "-")
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                ConfigItem(label = "Charge:", value = batchNumber ?: "-")
-                ConfigItem(label = "MHD:", value = bestBeforeDate ?: "-")
-            }
+            ConfigItem(label = "Lager:", value = warehouse?.name ?: "-")
+            ConfigItem(label = "Grund:", value = bookingReason?.reason ?: "-")
+            ConfigItem(label = "Charge:", value = batchNumber ?: "-")
+            ConfigItem(label = "MHD:", value = bestBeforeDate?.let { mhdFormatter.format(it) } ?: "-")
         }
     }
 }
 
 @Composable
 private fun ConfigItem(label: String, value: String) {
-    Row {
-        Text(text = label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f) // Label takes up 1 part of the space
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f) // Value takes up 1 part of the space
+        )
     }
 }
 

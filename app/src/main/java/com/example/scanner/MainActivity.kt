@@ -42,8 +42,14 @@ fun ScannerApp() {
             })
         }
         composable("main") {
+            // The ViewModel is created here and scoped to the "main" navigation entry.
+            // It's then passed down to MainScreen, which can pass it to ScanningScreen.
+            val scanningViewModel: ScanningViewModel = hiltViewModel(
+                navController.getBackStackEntry("main")
+            )
             MainScreen(
                 rootNavController = navController,
+                scanningViewModel = scanningViewModel,
                 onLogout = {
                     navController.navigate("login") {
                         popUpTo("main") { inclusive = true }
@@ -52,15 +58,18 @@ fun ScannerApp() {
             )
         }
         composable("process_configuration") {
+            // This screen gets its own ViewModel instance.
             ProcessConfigurationScreen(
+                viewModel = hiltViewModel(),
                 onNavigateToScanning = {
-                    navController.popBackStack()
+                    navController.navigate("main") {
+                        popUpTo("process_configuration") { inclusive = true }
+                    }
                 }
             )
         }
         composable("edit_configuration") {
-            // By getting the back stack entry for "main", Hilt provides the SAME
-            // ViewModel instance that is used within the MainScreen's navigation.
+            // This gets the SAME ViewModel instance as MainScreen because it's scoped to "main".
             val scanningViewModel: ScanningViewModel = hiltViewModel(
                 navController.getBackStackEntry("main")
             )

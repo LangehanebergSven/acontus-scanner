@@ -21,11 +21,13 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.scanner.ui.home.HomeScreen
 import com.example.scanner.ui.scanning.ScanningScreen
+import com.example.scanner.ui.scanning.ScanningViewModel
 import com.example.scanner.ui.view.settings.SettingsScreen
 
 @Composable
 fun MainScreen(
     rootNavController: NavController,
+    scanningViewModel: ScanningViewModel, // ViewModel is passed from the parent NavHost
     onLogout: () -> Unit
 ) {
     val navController = rememberNavController()
@@ -68,11 +70,10 @@ fun MainScreen(
                 HomeScreen(navController)
             }
             composable(BottomNavigationItem.Scanning.route) {
-                // ViewModel is scoped to the "main" route's back stack entry, so hiltViewModel()
-                // will automatically get the correct shared instance.
+                // The shared ViewModel instance is passed down to the ScanningScreen.
                 ScanningScreen(
                     rootNavController = rootNavController,
-                    viewModel = hiltViewModel() 
+                    viewModel = scanningViewModel
                 )
             }
             composable(BottomNavigationItem.Settings.route) {

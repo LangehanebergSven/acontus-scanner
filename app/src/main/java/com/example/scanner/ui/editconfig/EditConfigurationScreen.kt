@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -29,13 +28,56 @@ fun EditConfigurationScreen(
     viewModel: ScanningViewModel // Use the shared ViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showSaveChangesDialog by remember { mutableStateOf(false) }
+
+    val activeWarehouse by viewModel.activeWarehouse.collectAsState()
+    val activeBookingReason by viewModel.activeBookingReason.collectAsState()
+    val activeBatchNumber by viewModel.activeBatchNumber.collectAsState()
+    val activeBestBeforeDate by viewModel.activeBestBeforeDate.collectAsState()
+
+    // Temporary states for editing
+    var tempWarehouse by remember(activeWarehouse) { mutableStateOf(activeWarehouse) }
+    var tempBookingReason by remember(activeBookingReason) { mutableStateOf(activeBookingReason) }
+    var tempBatchNumber by remember(activeBatchNumber) { mutableStateOf(activeBatchNumber) }
+    var tempBestBeforeDate by remember(activeBestBeforeDate) { mutableStateOf(activeBestBeforeDate) }
+
+    val hasChanges = tempWarehouse != activeWarehouse ||
+            tempBookingReason != activeBookingReason ||
+            tempBatchNumber != activeBatchNumber ||
+            tempBestBeforeDate != activeBestBeforeDate
+
+    if (showSaveChangesDialog) {
+        SaveChangesDialog(
+            onConfirm = {
+                viewModel.setActiveWarehouse(tempWarehouse)
+                viewModel.setActiveBookingReason(tempBookingReason)
+                viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
+                viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
+                showSaveChangesDialog = false
+                navController.popBackStack()
+            },
+            onDismiss = {
+                showSaveChangesDialog = false
+                navController.popBackStack()
+            },
+            onCancel = {
+                showSaveChangesDialog = false
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Konfiguration bearbeiten") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        if (hasChanges) {
+                            showSaveChangesDialog = true
+                        } else {
+                            navController.popBackStack()
+                        }
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                     }
                 }
@@ -49,7 +91,27 @@ fun EditConfigurationScreen(
         ) {
             when (val state = uiState) {
                 is ScanningUiState.Success -> {
-                    EditConfigurationContent(state = state, viewModel = viewModel)
+                    EditConfigurationContent(
+                        state = state,
+                        tempWarehouse = tempWarehouse,
+                        onTempWarehouseChange = { tempWarehouse = it },
+                        tempBookingReason = tempBookingReason,
+                        onTempBookingReasonChange = { tempBookingReason = it },
+                        tempBatchNumber = tempBatchNumber,
+                        onTempBatchNumberChange = { tempBatchNumber = it },
+                        tempBestBeforeDate = tempBestBeforeDate,
+                        onTempBestBeforeDateChange = { tempBestBeforeDate = it },
+                        onSaveChanges = {
+                            viewModel.setActiveWarehouse(tempWarehouse)
+                            viewModel.setActiveBookingReason(tempBookingReason)
+                            viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
+                            viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
+                            navController.popBackStack()
+                        },
+                        onCancel = {
+                            navController.popBackStack()
+                        }
+                    )
                 }
                 else -> {
                     // Show a loading or error state if needed
@@ -63,13 +125,17 @@ fun EditConfigurationScreen(
 @Composable
 private fun EditConfigurationContent(
     state: ScanningUiState.Success,
-    viewModel: ScanningViewModel
+    tempWarehouse: Warehouse?,
+    onTempWarehouseChange: (Warehouse?) -> Unit,
+    tempBookingReason: BookingReason?,
+    onTempBookingReasonChange: (BookingReason?) -> Unit,
+    tempBatchNumber: String?,
+    onTempBatchNumberChange: (String) -> Unit,
+    tempBestBeforeDate: Date?,
+    onTempBestBeforeDateChange: (Date?) -> Unit,
+    onSaveChanges: () -> Unit,
+    onCancel: () -> Unit
 ) {
-    val activeWarehouse by viewModel.activeWarehouse.collectAsState()
-    val activeBookingReason by viewModel.activeBookingReason.collectAsState()
-    val activeBatchNumber by viewModel.activeBatchNumber.collectAsState()
-    val activeBestBeforeDate by viewModel.activeBestBeforeDate.collectAsState()
-
     var showWarehouseDialog by remember { mutableStateOf(false) }
     var showBookingReasonDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -81,7 +147,7 @@ private fun EditConfigurationContent(
             itemText = { it.name },
             onDismiss = { showWarehouseDialog = false },
             onSelect = {
-                viewModel.setActiveWarehouse(it)
+                onTempWarehouseChange(it)
                 showWarehouseDialog = false
             }
         )
@@ -94,27 +160,45 @@ private fun EditConfigurationContent(
             itemText = { it.reason },
             onDismiss = { showBookingReasonDialog = false },
             onSelect = {
-                viewModel.setActiveBookingReason(it)
+                onTempBookingReasonChange(it)
                 showBookingReasonDialog = false
             }
         )
     }
 
+    val datePickerState = rememberDatePickerState()
     if (showDatePicker) {
-        CustomDatePickerDialog(
-            onDateSelected = {
-                viewModel.setActiveBestBeforeDate(it)
-                showDatePicker = false
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            val selectedDate = Date(it + TimeZone.getDefault().getOffset(it))
+                            onTempBestBeforeDateChange(selectedDate)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
             },
-            onDismiss = { showDatePicker = false }
-        )
+            dismissButton = {
+                TextButton(
+                    onClick = { showDatePicker = false }
+                ) {
+                    Text("Abbrechen")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         val readOnlyColors = TextFieldDefaults.colors(
             disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -123,96 +207,96 @@ private fun EditConfigurationContent(
             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        // Warehouse Selector
-        Box(modifier = Modifier.clickable { showWarehouseDialog = true }) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Warehouse Selector
+            Box(modifier = Modifier.clickable { showWarehouseDialog = true }) {
+                OutlinedTextField(
+                    value = tempWarehouse?.name ?: "-",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Aktives Lager") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    colors = readOnlyColors
+                )
+            }
+
+            // Booking Reason Selector
+            Box(modifier = Modifier.clickable { showBookingReasonDialog = true }) {
+                OutlinedTextField(
+                    value = tempBookingReason?.reason ?: "-",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Aktiver Buchungsgrund") },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = false,
+                    colors = readOnlyColors
+                )
+            }
+
+            // MHD and Batch Number Inputs
+            val mhdFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY) }
+            Box(modifier = Modifier.clickable { showDatePicker = true }) {
+                OutlinedTextField(
+                    value = tempBestBeforeDate?.let { mhdFormatter.format(it) } ?: "",
+                    onValueChange = {},
+                    label = { Text("MHD") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    enabled = false,
+                    colors = readOnlyColors
+                )
+            }
             OutlinedTextField(
-                value = activeWarehouse?.name ?: "-",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Aktives Lager") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-                colors = readOnlyColors
+                value = tempBatchNumber ?: "",
+                onValueChange = onTempBatchNumberChange,
+                label = { Text("Charge") },
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
-        // Booking Reason Selector
-        Box(modifier = Modifier.clickable { showBookingReasonDialog = true }) {
-            OutlinedTextField(
-                value = activeBookingReason?.reason ?: "-",
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Aktiver Buchungsgrund") },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-                colors = readOnlyColors
-            )
-        }
-        
-        // MHD and Batch Number Inputs
-        val mhdFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY) }
-        Box(modifier = Modifier.clickable { showDatePicker = true }) {
-            OutlinedTextField(
-                value = activeBestBeforeDate?.let { mhdFormatter.format(it) } ?: "",
-                onValueChange = {},
-                label = { Text("MHD") },
-                modifier = Modifier.fillMaxWidth(),
-                readOnly = true,
-                enabled = false,
-                colors = readOnlyColors
-            )
-        }
-        OutlinedTextField(
-            value = activeBatchNumber ?: "",
-            onValueChange = { viewModel.setActiveBatchNumber(it) },
-            label = { Text("Charge") },
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CustomDatePickerDialog(
-    onDateSelected: (Date) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val datePickerState = rememberDatePickerState()
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.End
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                DatePicker(state = datePickerState)
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Abbrechen")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let {
-                            val selectedDate = Date(it + TimeZone.getDefault().getOffset(it))
-                            onDateSelected(selectedDate)
-                        }
-                    }) {
-                        Text("OK")
-                    }
-                }
+            TextButton(onClick = onCancel) {
+                Text("Abbrechen")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Button(onClick = onSaveChanges) {
+                Text("Übernehmen")
             }
         }
     }
 }
 
+@Composable
+private fun SaveChangesDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = { Text("Änderungen speichern?") },
+        text = { Text("Es gibt ungespeicherte Änderungen. Möchten Sie diese speichern?") },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("Speichern")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Verwerfen")
+            }
+        },
+    )
+}
 
 @Composable
 private fun <T> SelectionDialog(

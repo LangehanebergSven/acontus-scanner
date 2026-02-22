@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Date
 import javax.inject.Inject
@@ -22,25 +23,24 @@ class ScanningViewModel @Inject constructor(
     private val cacheRepository: CacheRepository
 ) : ViewModel() {
 
-    // TODO: Replace with actual logged-in employee ID
     private val employeeId = "12345"
 
     private val _uiState = MutableStateFlow<ScanningUiState>(ScanningUiState.Loading)
     val uiState: StateFlow<ScanningUiState> = _uiState.asStateFlow()
-    
-    // ... active configuration StateFlows remain the same ...
+
+    // These are now the single source of truth for the active configuration.
+    // The UI will collect these directly.
     private val _activeWarehouse = MutableStateFlow<Warehouse?>(null)
-    val activeWarehouse: StateFlow<Warehouse?> = _activeWarehouse.asStateFlow()
+    val activeWarehouse: StateFlow<Warehouse?> = _activeWarehouse
 
     private val _activeBookingReason = MutableStateFlow<BookingReason?>(null)
-    val activeBookingReason: StateFlow<BookingReason?> = _activeBookingReason.asStateFlow()
+    val activeBookingReason: StateFlow<BookingReason?> = _activeBookingReason
 
     private val _activeBestBeforeDate = MutableStateFlow<Date?>(null)
-    val activeBestBeforeDate: StateFlow<Date?> = _activeBestBeforeDate.asStateFlow()
+    val activeBestBeforeDate: StateFlow<Date?> = _activeBestBeforeDate
 
     private val _activeBatchNumber = MutableStateFlow<String?>(null)
-    val activeBatchNumber: StateFlow<String?> = _activeBatchNumber.asStateFlow()
-
+    val activeBatchNumber: StateFlow<String?> = _activeBatchNumber
 
     init {
         loadActiveProcess()
@@ -81,6 +81,7 @@ class ScanningViewModel @Inject constructor(
 
         _uiState.value = ScanningUiState.Success(
             process = process,
+            // Pass the initial values to the Success state
             processWarehouse = warehouse,
             processBookingReason = bookingReason,
             scannedItems = scannedItems,
@@ -88,33 +89,35 @@ class ScanningViewModel @Inject constructor(
             allBookingReasons = cacheRepository.getBookingReasons()
         )
     }
-    
+
     fun cancelProcess() {
         viewModelScope.launch {
             // TODO: Implement process cancellation logic
-            // This will likely involve deleting the ScanProcess and ScannedItems
             _uiState.value = ScanningUiState.NoProcess
         }
     }
-    
+
     fun submitProcess() {
         viewModelScope.launch {
-            // TODO: Implement process submission logic from Phase 5
+            // TODO: Implement process submission logic
         }
     }
 
-    // ... setActive methods remain the same ...
-    fun setActiveWarehouse(warehouse: Warehouse) {
+    // These methods now just update the standalone StateFlows.
+    // The EditConfigurationScreen will use these to temporarily hold changes.
+    fun setActiveWarehouse(warehouse: Warehouse?) {
         _activeWarehouse.value = warehouse
     }
-    
-    fun setActiveBookingReason(bookingReason: BookingReason) {
+
+    fun setActiveBookingReason(bookingReason: BookingReason?) {
         _activeBookingReason.value = bookingReason
     }
 
     fun setActiveBestBeforeDate(date: Date?) {
         _activeBestBeforeDate.value = date
     }
+
+
 
     fun setActiveBatchNumber(batchNumber: String?) {
         _activeBatchNumber.value = batchNumber?.takeIf { it.isNotBlank() }
@@ -132,5 +135,6 @@ sealed interface ScanningUiState {
         val allWarehouses: List<Warehouse>,
         val allBookingReasons: List<BookingReason>
     ) : ScanningUiState
+
     data class Error(val message: String) : ScanningUiState
 }
