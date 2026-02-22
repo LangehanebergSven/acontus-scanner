@@ -1,5 +1,6 @@
 package com.example.scanner.ui.scanning
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,23 +30,7 @@ class ScanningViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ScanningUiState>(ScanningUiState.Loading)
     val uiState: StateFlow<ScanningUiState> = _uiState.asStateFlow()
 
-    // These are now the single source of truth for the active configuration.
-    // The UI will collect these directly.
-    private val _activeWarehouse = MutableStateFlow<Warehouse?>(null)
-    val activeWarehouse: StateFlow<Warehouse?> = _activeWarehouse
-
-    private val _activeBookingReason = MutableStateFlow<BookingReason?>(null)
-    val activeBookingReason: StateFlow<BookingReason?> = _activeBookingReason
-
-    private val _activeBestBeforeDate = MutableStateFlow<Date?>(null)
-    val activeBestBeforeDate: StateFlow<Date?> = _activeBestBeforeDate
-
-    private val _activeBatchNumber = MutableStateFlow<String?>(null)
-    val activeBatchNumber: StateFlow<String?> = _activeBatchNumber
-
     init {
-        // Observe the processId from navigation arguments.
-        // This will re-trigger the data loading whenever the processId changes.
         savedStateHandle.getStateFlow("processId", 0L)
             .onEach { processId ->
                 loadActiveProcess(processId)
@@ -64,14 +49,12 @@ class ScanningViewModel @Inject constructor(
 
                 val process = scanRepository.getProcessById(processId)
                 if (process == null) {
-                    // This can happen if the process is created but the database transaction
-                    // hasn't completed before we navigate. A small delay and retry might help,
-                    // but for now, we'll just go to the NoProcess state.
                     _uiState.value = ScanningUiState.NoProcess
                     return@launch
                 }
                 loadScanData(process)
             } catch (e: Exception) {
+                Log.e("ScanningViewModel", "Failed to load active process", e)
                 _uiState.value = ScanningUiState.Error("Failed to load active process: ${e.message}")
             }
         }
@@ -86,12 +69,6 @@ class ScanningViewModel @Inject constructor(
             return
         }
 
-        // Initialize active configuration with process defaults
-        _activeWarehouse.value = warehouse
-        _activeBookingReason.value = bookingReason
-        _activeBestBeforeDate.value = null
-        _activeBatchNumber.value = null
-
         val scannedItems = scanRepository.getScannedItemsForProcess(process.id)
 
         _uiState.value = ScanningUiState.Success(
@@ -100,7 +77,11 @@ class ScanningViewModel @Inject constructor(
             processBookingReason = bookingReason,
             scannedItems = scannedItems,
             allWarehouses = cacheRepository.getWarehouses(),
-            allBookingReasons = cacheRepository.getBookingReasons()
+            allBookingReasons = cacheRepository.getBookingReasons(),
+            activeWarehouse = warehouse,
+            activeBookingReason = bookingReason,
+            activeBestBeforeDate = process.bestBeforeDate,
+            activeBatchNumber = process.batchNumber
         )
     }
 
@@ -117,20 +98,54 @@ class ScanningViewModel @Inject constructor(
         }
     }
 
+    private fun saveConfigurationChanges() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState is ScanningUiState.Success) {
+                // Create an updated process object from the current state
+                val updatedProcess = currentState.process.copy(
+                    warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.process.warehouseId,
+                    bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.process.bookingReasonId,
+                    batchNumber = currentState.activeBatchNumber,
+                    bestBeforeDate = currentState.activeBestBeforeDate
+                )
+                // Save the changes to the database
+                scanRepository.updateProcess(updatedProcess)
+            }
+        }
+    }
+
     fun setActiveWarehouse(warehouse: Warehouse?) {
-        _activeWarehouse.value = warehouse
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(activeWarehouse = warehouse)
+            saveConfigurationChanges()
+        }
     }
 
     fun setActiveBookingReason(bookingReason: BookingReason?) {
-        _activeBookingReason.value = bookingReason
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(activeBookingReason = bookingReason)
+            saveConfigurationChanges()
+        }
     }
 
     fun setActiveBestBeforeDate(date: Date?) {
-        _activeBestBeforeDate.value = date
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(activeBestBeforeDate = date)
+            saveConfigurationChanges()
+        }
     }
 
     fun setActiveBatchNumber(batchNumber: String?) {
-        _activeBatchNumber.value = batchNumber?.takeIf { it.isNotBlank() }
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            val finalBatchNumber = batchNumber?.takeIf { it.isNotBlank() }
+            _uiState.value = currentState.copy(activeBatchNumber = finalBatchNumber)
+            saveConfigurationChanges()
+        }
     }
 }
 
@@ -143,7 +158,12 @@ sealed interface ScanningUiState {
         val processBookingReason: BookingReason,
         val scannedItems: List<ScannedItem>,
         val allWarehouses: List<Warehouse>,
-        val allBookingReasons: List<BookingReason>
+        val allBookingReasons: List<BookingReason>,
+        // Active configuration
+        val activeWarehouse: Warehouse?,
+        val activeBookingReason: BookingReason?,
+        val activeBestBeforeDate: Date?,
+        val activeBatchNumber: String?
     ) : ScanningUiState
 
     data class Error(val message: String) : ScanningUiState

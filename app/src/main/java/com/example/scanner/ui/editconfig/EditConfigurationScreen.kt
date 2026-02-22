@@ -30,92 +30,108 @@ fun EditConfigurationScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showSaveChangesDialog by remember { mutableStateOf(false) }
 
-    val activeWarehouse by viewModel.activeWarehouse.collectAsState()
-    val activeBookingReason by viewModel.activeBookingReason.collectAsState()
-    val activeBatchNumber by viewModel.activeBatchNumber.collectAsState()
-    val activeBestBeforeDate by viewModel.activeBestBeforeDate.collectAsState()
+    // We can only edit when the state is Success
+    if (uiState is ScanningUiState.Success) {
+        val successState = uiState as ScanningUiState.Success
 
-    // Temporary states for editing
-    var tempWarehouse by remember(activeWarehouse) { mutableStateOf(activeWarehouse) }
-    var tempBookingReason by remember(activeBookingReason) { mutableStateOf(activeBookingReason) }
-    var tempBatchNumber by remember(activeBatchNumber) { mutableStateOf(activeBatchNumber) }
-    var tempBestBeforeDate by remember(activeBestBeforeDate) { mutableStateOf(activeBestBeforeDate) }
+        // Temporary states for editing, initialized from the success state
+        var tempWarehouse by remember(successState.activeWarehouse) { mutableStateOf(successState.activeWarehouse) }
+        var tempBookingReason by remember(successState.activeBookingReason) { mutableStateOf(successState.activeBookingReason) }
+        var tempBatchNumber by remember(successState.activeBatchNumber) { mutableStateOf(successState.activeBatchNumber) }
+        var tempBestBeforeDate by remember(successState.activeBestBeforeDate) { mutableStateOf(successState.activeBestBeforeDate) }
 
-    val hasChanges = tempWarehouse != activeWarehouse ||
-            tempBookingReason != activeBookingReason ||
-            tempBatchNumber != activeBatchNumber ||
-            tempBestBeforeDate != activeBestBeforeDate
+        val hasChanges = tempWarehouse != successState.activeWarehouse ||
+                tempBookingReason != successState.activeBookingReason ||
+                tempBatchNumber != successState.activeBatchNumber ||
+                tempBestBeforeDate != successState.activeBestBeforeDate
 
-    if (showSaveChangesDialog) {
-        SaveChangesDialog(
-            onConfirm = {
-                viewModel.setActiveWarehouse(tempWarehouse)
-                viewModel.setActiveBookingReason(tempBookingReason)
-                viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
-                viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
-                showSaveChangesDialog = false
-                navController.popBackStack()
-            },
-            onDismiss = {
-                showSaveChangesDialog = false
-                navController.popBackStack()
-            },
-            onCancel = {
-                showSaveChangesDialog = false
-            }
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Konfiguration bearbeiten") },
-                navigationIcon = {
-                    IconButton(onClick = {
-                        if (hasChanges) {
-                            showSaveChangesDialog = true
-                        } else {
-                            navController.popBackStack()
-                        }
-                    }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
-                    }
+        if (showSaveChangesDialog) {
+            SaveChangesDialog(
+                onConfirm = {
+                    viewModel.setActiveWarehouse(tempWarehouse)
+                    viewModel.setActiveBookingReason(tempBookingReason)
+                    viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
+                    viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
+                    showSaveChangesDialog = false
+                    navController.popBackStack()
+                },
+                onDismiss = {
+                    showSaveChangesDialog = false
+                    navController.popBackStack()
+                },
+                onCancel = {
+                    showSaveChangesDialog = false
                 }
             )
         }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (val state = uiState) {
-                is ScanningUiState.Success -> {
-                    EditConfigurationContent(
-                        state = state,
-                        tempWarehouse = tempWarehouse,
-                        onTempWarehouseChange = { tempWarehouse = it },
-                        tempBookingReason = tempBookingReason,
-                        onTempBookingReasonChange = { tempBookingReason = it },
-                        tempBatchNumber = tempBatchNumber,
-                        onTempBatchNumberChange = { tempBatchNumber = it },
-                        tempBestBeforeDate = tempBestBeforeDate,
-                        onTempBestBeforeDateChange = { tempBestBeforeDate = it },
-                        onSaveChanges = {
-                            viewModel.setActiveWarehouse(tempWarehouse)
-                            viewModel.setActiveBookingReason(tempBookingReason)
-                            viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
-                            viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
-                            navController.popBackStack()
-                        },
-                        onCancel = {
-                            navController.popBackStack()
+
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Konfiguration bearbeiten") },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            if (hasChanges) {
+                                showSaveChangesDialog = true
+                            } else {
+                                navController.popBackStack()
+                            }
+                        }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
                         }
-                    )
-                }
-                else -> {
-                    // Show a loading or error state if needed
-                }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                EditConfigurationContent(
+                    state = successState,
+                    tempWarehouse = tempWarehouse,
+                    onTempWarehouseChange = { tempWarehouse = it },
+                    tempBookingReason = tempBookingReason,
+                    onTempBookingReasonChange = { tempBookingReason = it },
+                    tempBatchNumber = tempBatchNumber,
+                    onTempBatchNumberChange = { tempBatchNumber = it },
+                    tempBestBeforeDate = tempBestBeforeDate,
+                    onTempBestBeforeDateChange = { tempBestBeforeDate = it },
+                    onSaveChanges = {
+                        viewModel.setActiveWarehouse(tempWarehouse)
+                        viewModel.setActiveBookingReason(tempBookingReason)
+                        viewModel.setActiveBatchNumber(tempBatchNumber ?: "")
+                        viewModel.setActiveBestBeforeDate(tempBestBeforeDate)
+                        navController.popBackStack()
+                    },
+                    onCancel = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+        }
+    } else {
+        // Show a loading or error state if needed, or just a blank screen
+        // as this screen should ideally not be reachable without a Success state.
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Konfiguration bearbeiten") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Zurück")
+                        }
+                    }
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                // You can add a loading indicator or an error message here
             }
         }
     }

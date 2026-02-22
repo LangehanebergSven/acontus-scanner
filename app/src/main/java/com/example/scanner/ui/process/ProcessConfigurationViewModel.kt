@@ -1,5 +1,6 @@
 package com.example.scanner.ui.process
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.scanner.data.model.BookingReason
@@ -45,6 +46,7 @@ class ProcessConfigurationViewModel @Inject constructor(
                 _selectedWarehouse.value = warehouses.firstOrNull()
                 _selectedBookingReason.value = bookingReasons.firstOrNull()
             } catch (e: Exception) {
+                Log.e("ProcessConfigurationViewModel.loadInitialData", "Failed to load data", e)
                 _uiState.value = ProcessUiState.Error("Failed to load data")
             }
         }

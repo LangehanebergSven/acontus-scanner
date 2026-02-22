@@ -35,6 +35,10 @@ class ScanRepository @Inject constructor(
         return scanProcessDao.getLatestProcessForEmployee(employeeId)
     }
 
+    suspend fun updateProcess(process: ScanProcess) {
+        scanProcessDao.update(process)
+    }
+
     suspend fun getScannedItemsForProcess(processId: Long): List<ScannedItem> {
         return scannedItemDao.getItemsForProcess(processId)
     }

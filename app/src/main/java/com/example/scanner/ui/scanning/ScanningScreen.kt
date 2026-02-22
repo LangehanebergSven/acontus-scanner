@@ -109,21 +109,16 @@ fun ScanningScreen(
                     )
                 }
                 is ScanningUiState.Success -> {
-                    val activeWarehouse by viewModel.activeWarehouse.collectAsState()
-                    val activeBookingReason by viewModel.activeBookingReason.collectAsState()
-                    val activeBatchNumber by viewModel.activeBatchNumber.collectAsState()
-                    val activeBestBeforeDate by viewModel.activeBestBeforeDate.collectAsState()
-
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
                         CompactConfigurationHeader(
-                            warehouse = activeWarehouse,
-                            bookingReason = activeBookingReason,
-                            batchNumber = activeBatchNumber,
-                            bestBeforeDate = activeBestBeforeDate
+                            warehouse = state.activeWarehouse,
+                            bookingReason = state.activeBookingReason,
+                            batchNumber = state.activeBatchNumber,
+                            bestBeforeDate = state.activeBestBeforeDate
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Divider()

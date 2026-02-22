@@ -10,5 +10,7 @@ data class ScanProcess(
     val employeeId: String,
     val warehouseId: String,
     val bookingReasonId: String,
-    val createdAt: Date = Date()
+    val createdAt: Date = Date(),
+    val bestBeforeDate: Date? = null,
+    val batchNumber: String? = null
 )
