@@ -77,6 +77,8 @@ This document outlines the step-by-step implementation plan for the Android Scan
   - Ensure the current process auto-saves locally linked to the `Personal-Nr`.
 - [x] **Task 3.3: Active Configuration Management**
   - Implement UI/logic to update the current configuration (Warehouse, Booking Reason, MHD, Batch-Nr) on the fly during the scanning process without affecting already scanned items.
+- [x] **Task 3.4: Handle Missing Configuration**
+    - When the `ScanningScreen` is opened with a process that has invalid configuration data (e.g., deleted Warehouse), it will now correctly redirect the user to the `ProcessConfigurationScreen` to start a new process.
 
 ---
 ### **Phase 3 Summary (Context for Next Phase):**
@@ -98,6 +100,9 @@ This document outlines the step-by-step implementation plan for the Android Scan
 *   **Active Configuration:**
     *   The `ScanningScreen` now holds state for the "active" configuration (Warehouse, Booking Reason, Batch, MHD) that will be applied to newly scanned items.
     *   The UI includes clickable headers that open selection dialogs and text fields to modify this active configuration at any time, separate from the process's initial settings.
+*   **Error Handling:**
+    *   The `ScanningViewModel` was improved to handle cases where a `ScanProcess` references invalid configuration data. Instead of showing an error, it now treats it as having no process, guiding the user to create a new, valid configuration.
+
 ---
 
 ## Phase 4: Scanning & Item Management

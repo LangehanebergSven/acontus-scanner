@@ -8,10 +8,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -26,10 +26,17 @@ import com.example.scanner.ui.view.settings.SettingsScreen
 
 @Composable
 fun MainScreen(
+    processId: Long,
     rootNavController: NavController,
     scanningViewModel: ScanningViewModel, // ViewModel is passed from the parent NavHost
     onLogout: () -> Unit
 ) {
+    // This LaunchedEffect is the key to fixing the navigation issue.
+    // It will run every time the processId changes.
+    LaunchedEffect(processId) {
+        scanningViewModel.loadActiveProcess(processId)
+    }
+
     val navController = rememberNavController()
     val items = listOf(
         BottomNavigationItem.Home,
@@ -52,6 +59,13 @@ fun MainScreen(
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
+
+                                // If the user is on the Scanning tab and clicks it again,
+                                // we want to force the ViewModel to check for the latest process.
+                                if (screen.route == BottomNavigationItem.Scanning.route) {
+                                    scanningViewModel.loadActiveProcess(processId)
+                                }
+                                
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -63,7 +77,7 @@ fun MainScreen(
     ) { innerPadding ->
         NavHost(
             navController,
-            startDestination = BottomNavigationItem.Home.route,
+            startDestination = BottomNavigationItem.Scanning.route, // Default to scanning screen
             Modifier.padding(innerPadding)
         ) {
             composable(BottomNavigationItem.Home.route) {
