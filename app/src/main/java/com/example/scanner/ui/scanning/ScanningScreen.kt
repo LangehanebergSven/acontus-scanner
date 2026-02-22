@@ -26,7 +26,8 @@ import java.util.Locale
 @Composable
 fun ScanningScreen(
     rootNavController: NavController,
-    viewModel: ScanningViewModel
+    viewModel: ScanningViewModel,
+    onStartNewProcess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var isFabMenuExpanded by remember { mutableStateOf(false) }
@@ -105,7 +106,7 @@ fun ScanningScreen(
                 }
                 is ScanningUiState.NoProcess -> {
                     NoProcessContent(
-                        onStartProcess = { rootNavController.navigate("process_configuration") }
+                        onStartProcess = onStartNewProcess
                     )
                 }
                 is ScanningUiState.Success -> {

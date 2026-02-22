@@ -23,7 +23,7 @@ import com.example.scanner.ui.theme.ScannerTheme
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (String) -> Unit
 ) {
     var personalNr by remember { mutableStateOf("") }
 
@@ -47,7 +47,7 @@ fun LoginScreen(
             Button(onClick = {
                 // Dummy validation
                 if (personalNr.isNotEmpty()) {
-                    onLoginSuccess()
+                    onLoginSuccess(personalNr)
                 }
             }) {
                 Text("Anmelden")

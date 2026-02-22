@@ -12,6 +12,7 @@ import com.example.scanner.data.model.Warehouse
 
 @Composable
 fun ProcessConfigurationScreen(
+    employeeId: String,
     onNavigateToScanning: (Long) -> Unit,
     viewModel: ProcessConfigurationViewModel = hiltViewModel()
 ) {
@@ -37,7 +38,7 @@ fun ProcessConfigurationScreen(
                     warehouses = state.warehouses,
                     bookingReasons = state.bookingReasons,
                     onStartClicked = {
-                        viewModel.startProcess(onNavigateToScanning)
+                        viewModel.startProcess(employeeId, onNavigateToScanning)
                     },
                     viewModel = viewModel
                 )

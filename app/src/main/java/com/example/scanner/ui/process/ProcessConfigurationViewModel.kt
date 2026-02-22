@@ -60,14 +60,11 @@ class ProcessConfigurationViewModel @Inject constructor(
         _selectedBookingReason.value = bookingReason
     }
 
-    fun startProcess(onProcessStarted: (Long) -> Unit) {
+    fun startProcess(employeeId: String, onProcessStarted: (Long) -> Unit) {
         viewModelScope.launch {
             val warehouse = _selectedWarehouse.value
             val bookingReason = _selectedBookingReason.value
             
-            // TODO: Replace with actual logged-in employee ID
-            val employeeId = "12345" 
-
             if (warehouse != null && bookingReason != null) {
                 val processId = scanRepository.startNewProcess(
                     employeeId = employeeId,

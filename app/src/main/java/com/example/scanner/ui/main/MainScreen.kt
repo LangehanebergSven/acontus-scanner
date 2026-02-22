@@ -28,11 +28,10 @@ import com.example.scanner.ui.view.settings.SettingsScreen
 fun MainScreen(
     processId: Long,
     rootNavController: NavController,
-    scanningViewModel: ScanningViewModel, // ViewModel is passed from the parent NavHost
-    onLogout: () -> Unit
+    scanningViewModel: ScanningViewModel,
+    onLogout: () -> Unit,
+    onStartNewProcess: () -> Unit
 ) {
-    // This LaunchedEffect is the key to fixing the navigation issue.
-    // It will run every time the processId changes.
     LaunchedEffect(processId) {
         scanningViewModel.loadActiveProcess(processId)
     }
@@ -59,13 +58,6 @@ fun MainScreen(
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
-
-                                // If the user is on the Scanning tab and clicks it again,
-                                // we want to force the ViewModel to check for the latest process.
-                                if (screen.route == BottomNavigationItem.Scanning.route) {
-                                    scanningViewModel.loadActiveProcess(processId)
-                                }
-                                
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -77,21 +69,21 @@ fun MainScreen(
     ) { innerPadding ->
         NavHost(
             navController,
-            startDestination = BottomNavigationItem.Scanning.route, // Default to scanning screen
+            startDestination = BottomNavigationItem.Scanning.route,
             Modifier.padding(innerPadding)
         ) {
             composable(BottomNavigationItem.Home.route) {
                 HomeScreen(navController)
             }
             composable(BottomNavigationItem.Scanning.route) {
-                // The shared ViewModel instance is passed down to the ScanningScreen.
                 ScanningScreen(
                     rootNavController = rootNavController,
-                    viewModel = scanningViewModel
+                    viewModel = scanningViewModel,
+                    onStartNewProcess = onStartNewProcess
                 )
             }
             composable(BottomNavigationItem.Settings.route) {
-                SettingsScreen(onLogout = onLogout, onStartProcess = {})
+                SettingsScreen(onLogout = onLogout, onStartProcess = onStartNewProcess)
             }
         }
     }

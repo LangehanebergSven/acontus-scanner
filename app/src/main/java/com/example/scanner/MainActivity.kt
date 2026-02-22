@@ -16,6 +16,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.scanner.ui.editconfig.EditConfigurationScreen
 import com.example.scanner.ui.main.MainScreen
+import com.example.scanner.ui.main.MainViewModel
 import com.example.scanner.ui.process.ProcessConfigurationScreen
 import com.example.scanner.ui.scanning.ScanningViewModel
 import com.example.scanner.ui.theme.ScannerTheme
@@ -38,43 +39,51 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ScannerApp() {
     val navController = rememberNavController()
+    val mainViewModel: MainViewModel = hiltViewModel()
+
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
-            LoginScreen(onLoginSuccess = {
-                // Navigate to the nested main_graph and clear the back stack
-                navController.navigate("main_graph/0") {
-                    popUpTo("login") { inclusive = true }
+            LoginScreen(onLoginSuccess = { employeeId ->
+                mainViewModel.findLatestProcess(employeeId) { processId ->
+                    navController.navigate("main_graph/$processId") {
+                        popUpTo("login") { inclusive = true }
+                    }
                 }
             })
         }
 
-        // Nest the main and edit configuration screens in a shared graph
-        mainGraph(navController)
+        mainGraph(navController, mainViewModel)
 
         composable("process_configuration") {
-            ProcessConfigurationScreen(
-                viewModel = hiltViewModel(),
-                onNavigateToScanning = { processId ->
-                    // Navigate to the main_graph with the new processId
-                    navController.navigate("main_graph/$processId") {
-                        // Pop up to the login screen to prevent going back to an empty main screen
-                        popUpTo("login")
-                    }
+            // Make sure we have an employeeId before navigating here.
+            // If not, redirect to login. This is a safeguard.
+            val employeeId = mainViewModel.loggedInEmployeeId
+            if (employeeId == null) {
+                navController.navigate("login") {
+                    popUpTo("main_graph") { inclusive = true }
                 }
-            )
+            } else {
+                ProcessConfigurationScreen(
+                    employeeId = employeeId,
+                    viewModel = hiltViewModel(),
+                    onNavigateToScanning = { processId ->
+                        navController.navigate("main_graph/$processId") {
+                            popUpTo("login")
+                        }
+                    }
+                )
+            }
         }
     }
 }
 
-// Define the nested graph as an extension function
-private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
+private fun NavGraphBuilder.mainGraph(navController: NavHostController, mainViewModel: MainViewModel) {
     navigation(
         startDestination = "main/{processId}",
         route = "main_graph/{processId}",
         arguments = listOf(navArgument("processId") { type = NavType.LongType; defaultValue = 0L })
     ) {
         composable("main/{processId}") { backStackEntry ->
-            // Get the parent entry for the graph to scope the ViewModel
             val parentEntry = backStackEntry.destination.parent?.route?.let {
                 navController.getBackStackEntry(it)
             }
@@ -89,11 +98,14 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     navController.navigate("login") {
                         popUpTo("main_graph/{processId}") { inclusive = true }
                     }
+                },
+                onStartNewProcess = {
+                    // Navigate to process configuration
+                    navController.navigate("process_configuration")
                 }
             )
         }
         composable("edit_configuration") { backStackEntry ->
-            // Get the parent entry for the graph to scope the ViewModel
             val parentEntry = backStackEntry.destination.parent?.route?.let {
                 navController.getBackStackEntry(it)
             }
