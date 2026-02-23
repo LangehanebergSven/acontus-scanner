@@ -36,8 +36,8 @@ class SyncRepository(
         // TODO: Replace with the actual table name and column names of your ERP system
         val tableName = "ERP_WaWi_Scans_New"
         
-        val articleId = item.articleId?.let { "'$it'" } ?: "NULL"
-        val materialId = item.materialId?.let { "'$it'" } ?: "NULL"
+        val articleId = item.articleId ?: "NULL"
+        val materialId = item.materialId ?: "NULL"
         val itemType = if (item.articleId != null) "Article" else "Material"
         val warehouseId = item.warehouseId
         val bookingReasonId = item.bookingReasonId
@@ -71,8 +71,8 @@ class SyncRepository(
                 $employeeId,
                 $warehouseId,
                 $bookingReasonId,
-                '$batchStr',
-                '$mhdFormatted',
+                $batchStr,
+                $mhdFormatted,
                 $quantity,
                 $contentQuantity,
                 $booked,

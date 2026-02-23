@@ -169,3 +169,6 @@ This document outlines the step-by-step implementation plan for the Android Scan
     *   Upon completion (successful remote sync or offline logging), the local scan process and its items are deleted.
     *   Added visual feedback (loading indicator) during submission and error dialogs for unexpected failures.
     *   Added `cancelProcess()` functionality to delete the current scan session completely.
+*   **Bug Fix:**
+    *   Fixed `SocketException: EPERM` by adding `android.permission.INTERNET` to `AndroidManifest.xml`.
+    *   Workaround for `java.lang.AssertionError: numMsgsRcvd:1 should be less than numMsgsSent:1` applied by removing the `Conscrypt` provider.

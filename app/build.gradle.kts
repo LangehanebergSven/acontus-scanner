@@ -68,9 +68,9 @@ dependencies {
     // Keyence SDK
     implementation(files("libs/keyence_sdk.aar"))
     implementation(files("libs/keyence_task_sdk.aar"))
-    
-    // MSSQL JDBC
-    implementation(libs.mssql.jdbc)
+
+    // jtds is very old, but works. the modern jdbc driver for mssql doesn't work
+    implementation(files("libs/jtds-1.3.1.jar"))
 
     // tests & debug
     testImplementation(libs.junit)

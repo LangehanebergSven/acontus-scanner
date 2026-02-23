@@ -14,12 +14,14 @@ import javax.inject.Inject
 
 class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
 
-    private val dbUrl = "jdbc:sqlserver://192.168.2.3:1433;databaseName=Daten_Hemme_Schmargendorf_251221;user=daten_user;password=\$Axyzwert123;trustServerCertificate=true;encrypt=false"
+    // jtds is very old, but works. the modern jdbc driver for mssql doesn't work
+    private val dbUrl = "jdbc:jtds:sqlserver://192.168.2.3:1433/Daten_Hemme_Schmargendorf_251221;ssl=require"
+    private val user = "daten_user"
+    private val password = "\$Axyzwert123"
 
-    init {
-        // Explicitly load the driver
+    init {        // Explicitly load the driver
         try {
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver")
+            Class.forName("net.sourceforge.jtds.jdbc.Driver")
         } catch (e: Exception) {
             Log.e("DatabaseConnector", "Error loading JDBC driver: ${e.message}")
         }
@@ -28,7 +30,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
     private suspend fun <T> executeSelect(query: String, mapper: (ResultSet) -> T): List<T> = withContext(Dispatchers.IO) {
         val resultList = mutableListOf<T>()
         try {
-            DriverManager.getConnection(dbUrl).use { connection ->
+            DriverManager.getConnection(dbUrl, user, password).use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeQuery(query).use { resultSet ->
                         while (resultSet.next()) {
@@ -45,7 +47,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
 
     override suspend fun executeQuery(sql: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            DriverManager.getConnection(dbUrl).use { connection ->
+            DriverManager.getConnection(dbUrl, user, password).use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeUpdate(sql)
                     return@withContext true
