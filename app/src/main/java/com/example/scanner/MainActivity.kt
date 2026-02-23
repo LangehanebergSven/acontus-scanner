@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -40,16 +42,20 @@ class MainActivity : ComponentActivity() {
 fun ScannerApp() {
     val navController = rememberNavController()
     val mainViewModel: MainViewModel = hiltViewModel()
+    val isSyncing by mainViewModel.isSyncing.collectAsState()
 
     NavHost(navController = navController, startDestination = "login") {
         composable("login") {
-            LoginScreen(onLoginSuccess = { employeeId ->
-                mainViewModel.findLatestProcess(employeeId) { processId ->
-                    navController.navigate("main_graph/$processId") {
-                        popUpTo("login") { inclusive = true }
+            LoginScreen(
+                isSyncing = isSyncing,
+                onLoginSuccess = { employeeId ->
+                    mainViewModel.findLatestProcess(employeeId) { processId ->
+                        navController.navigate("main_graph/$processId") {
+                            popUpTo("login") { inclusive = true }
+                        }
                     }
                 }
-            })
+            )
         }
 
         mainGraph(navController, mainViewModel)

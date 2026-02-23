@@ -14,9 +14,7 @@ import javax.inject.Inject
 
 class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
 
-    private val dbUrl = "jdbc:sqlserver://192.168.2.3,1433;databaseName=Daten_Hemme_Schmargendorf_251221;trustServerCertificate=true"
-    private val dbUser = "daten_user"
-    private val dbPass = $$"$Axyzwert123"
+    private val dbUrl = "jdbc:sqlserver://192.168.2.3:1433;databaseName=Daten_Hemme_Schmargendorf_251221;user=daten_user;password=\$Axyzwert123;trustServerCertificate=true;encrypt=false"
 
     init {
         // Explicitly load the driver
@@ -30,7 +28,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
     private suspend fun <T> executeSelect(query: String, mapper: (ResultSet) -> T): List<T> = withContext(Dispatchers.IO) {
         val resultList = mutableListOf<T>()
         try {
-            DriverManager.getConnection(dbUrl, dbUser, dbPass).use { connection ->
+            DriverManager.getConnection(dbUrl).use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeQuery(query).use { resultSet ->
                         while (resultSet.next()) {
@@ -47,7 +45,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
 
     override suspend fun executeQuery(sql: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            DriverManager.getConnection(dbUrl, dbUser, dbPass).use { connection ->
+            DriverManager.getConnection(dbUrl).use { connection ->
                 connection.createStatement().use { statement ->
                     statement.executeUpdate(sql)
                     return@withContext true

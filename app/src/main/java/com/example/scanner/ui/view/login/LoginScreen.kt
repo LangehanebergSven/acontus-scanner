@@ -22,16 +22,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.scanner.ui.theme.ScannerTheme
 import com.example.scanner.ui.viewmodel.LoginState
 import com.example.scanner.ui.viewmodel.LoginViewModel
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
+    isSyncing: Boolean = false,
     onLoginSuccess: (String) -> Unit
 ) {
     var personalNr by remember { mutableStateOf("") }
@@ -62,23 +61,30 @@ fun LoginScreen(
                 value = personalNr,
                 onValueChange = { personalNr = it },
                 label = { Text("Personal-Nr.") },
-                singleLine = true
+                singleLine = true,
+                enabled = !isSyncing
             )
             
             Spacer(modifier = Modifier.height(24.dp))
             
             Button(
                 onClick = { viewModel.onLoginClicked(personalNr) },
-                enabled = loginState !is LoginState.Loading
+                enabled = loginState !is LoginState.Loading && !isSyncing
             ) {
                 Text("Anmelden")
+            }
+            
+            if (isSyncing) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator()
+                Text("Daten werden synchronisiert...", style = MaterialTheme.typography.bodySmall)
             }
             
             Spacer(modifier = Modifier.height(24.dp))
             
             when (loginState) {
                 is LoginState.Loading -> {
-                    CircularProgressIndicator()
+                    if (!isSyncing) CircularProgressIndicator()
                 }
                 is LoginState.Error -> {
                     Text(
