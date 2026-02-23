@@ -1,6 +1,7 @@
 package com.example.scanner.data.local.dao
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -13,6 +14,9 @@ interface ScanProcessDao {
 
     @Update
     suspend fun update(scanProcess: ScanProcess)
+
+    @Delete
+    suspend fun delete(scanProcess: ScanProcess)
 
     @Query("SELECT * FROM scan_processes WHERE id = :id")
     suspend fun getById(id: Long): ScanProcess?

@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "employees")
 data class Employee(
-    @PrimaryKey val employeeId: String,
+    @PrimaryKey val employeeId: String, // Technical ID from ERP
+    val employeeLoginNumber: String,    // Login number (formerly HemmePersonalNr)
     val name: String
 )

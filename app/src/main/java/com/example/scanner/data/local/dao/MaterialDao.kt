@@ -14,8 +14,14 @@ interface MaterialDao {
     @Query("SELECT * FROM materials WHERE materialId = :materialId")
     suspend fun getMaterialById(materialId: String): Material?
 
-    @Query("SELECT * FROM materials WHERE name LIKE '%' || :query || '%' OR materialId LIKE '%' || :query || '%'")
+    @Query("SELECT * FROM materials WHERE ean = :ean")
+    suspend fun getMaterialByEan(ean: String): Material?
+
+    @Query("SELECT * FROM materials WHERE name LIKE '%' || :query || '%' OR materialId LIKE '%' || :query || '%' OR ean LIKE '%' || :query || '%'")
     suspend fun searchMaterials(query: String): List<Material>
+
+    @Query("SELECT COUNT(*) FROM materials")
+    suspend fun getCount(): Int
 
     @Query("DELETE FROM materials")
     suspend fun clearAll()

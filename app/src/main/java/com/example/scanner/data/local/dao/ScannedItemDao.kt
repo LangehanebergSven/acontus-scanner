@@ -10,7 +10,7 @@ import com.example.scanner.data.model.ScannedItem
 @Dao
 interface ScannedItemDao {
     @Insert
-    suspend fun insert(item: ScannedItem)
+    suspend fun insert(item: ScannedItem): Long
 
     @Update
     suspend fun update(item: ScannedItem)

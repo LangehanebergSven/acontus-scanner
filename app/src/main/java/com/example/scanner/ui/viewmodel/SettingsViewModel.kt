@@ -2,29 +2,27 @@ package com.example.scanner.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.scanner.data.repository.CacheRepository
+import com.example.scanner.data.sync.MasterDataSynchronizer
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val cacheRepository: CacheRepository,
+    private val masterDataSynchronizer: MasterDataSynchronizer
 ) : ViewModel() {
 
-    val lastSyncTimestamp: StateFlow<Long> = cacheRepository.lastSyncTimestamp
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = 0L
-        )
+    private val _lastSyncTimestamp = MutableStateFlow(0L)
+    val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
 
     fun onClearCacheClicked() {
         viewModelScope.launch {
-            cacheRepository.invalidateCache()
+            masterDataSynchronizer.performSync()
+            // In a real app, we would update the timestamp here or observe it from prefs
+            _lastSyncTimestamp.value = System.currentTimeMillis()
         }
     }
 

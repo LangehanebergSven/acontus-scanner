@@ -65,6 +65,12 @@ dependencies {
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 
+    // Keyence SDK
+    implementation(files("libs/keyence_sdk.aar"))
+    implementation(files("libs/keyence_task_sdk.aar"))
+    
+    // MSSQL JDBC
+    implementation(libs.mssql.jdbc)
 
     // tests & debug
     testImplementation(libs.junit)

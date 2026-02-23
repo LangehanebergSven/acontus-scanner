@@ -29,7 +29,9 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "scanner_database"
-        ).build()
+        )
+        .fallbackToDestructiveMigration(dropAllTables = true) // Important since we incremented version for new EAN column
+        .build()
     }
 
     @Provides

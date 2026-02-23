@@ -3,10 +3,12 @@ package com.example.scanner.ui.process
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.scanner.data.local.dao.BookingReasonDao
+import com.example.scanner.data.local.dao.WarehouseDao
 import com.example.scanner.data.model.BookingReason
 import com.example.scanner.data.model.Warehouse
-import com.example.scanner.data.repository.CacheRepository
 import com.example.scanner.data.repository.ScanRepository
+import com.example.scanner.data.sync.MasterDataSynchronizer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +18,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProcessConfigurationViewModel @Inject constructor(
-    private val cacheRepository: CacheRepository,
-    private val scanRepository: ScanRepository
+    private val warehouseDao: WarehouseDao,
+    private val bookingReasonDao: BookingReasonDao,
+    private val scanRepository: ScanRepository,
+    private val masterDataSynchronizer: MasterDataSynchronizer
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ProcessUiState>(ProcessUiState.Loading)
@@ -36,8 +40,12 @@ class ProcessConfigurationViewModel @Inject constructor(
     private fun loadInitialData() {
         viewModelScope.launch {
             try {
-                val warehouses = cacheRepository.getWarehouses()
-                val bookingReasons = cacheRepository.getBookingReasons()
+                // Ensure data is available (sync or dummy data)
+                masterDataSynchronizer.syncIfNeeded()
+                
+                val warehouses = warehouseDao.getAll()
+                val bookingReasons = bookingReasonDao.getAll()
+                
                 _uiState.value = ProcessUiState.Success(
                     warehouses = warehouses,
                     bookingReasons = bookingReasons
@@ -47,7 +55,7 @@ class ProcessConfigurationViewModel @Inject constructor(
                 _selectedBookingReason.value = bookingReasons.firstOrNull()
             } catch (e: Exception) {
                 Log.e("ProcessConfigurationViewModel.loadInitialData", "Failed to load data", e)
-                _uiState.value = ProcessUiState.Error("Failed to load data")
+                _uiState.value = ProcessUiState.Error("Failed to load data: ${e.message}")
             }
         }
     }

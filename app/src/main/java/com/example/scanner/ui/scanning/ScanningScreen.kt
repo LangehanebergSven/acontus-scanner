@@ -1,45 +1,131 @@
 package com.example.scanner.ui.scanning
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.scanner.data.model.BookingReason
-import com.example.scanner.data.model.ScannedItem
+import com.example.scanner.data.model.SearchResult
 import com.example.scanner.data.model.Warehouse
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanningScreen(
     rootNavController: NavController,
     viewModel: ScanningViewModel,
     onStartNewProcess: () -> Unit
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var isFabMenuExpanded by remember { mutableStateOf(false) }
 
+    // 1. Broadcast Receiver für den Scanner
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                val barcode = intent?.getStringExtra("com.keyence.autoid.scanmanagersdk.data")
+                val codeType = intent?.getStringExtra("com.keyence.autoid.scanmanagersdk.code_type")
+
+                if (codeType != "UPC/EAN/JAN")
+                    return
+
+                barcode?.let { code ->
+                    Log.e("ScanningScreen", "onReceive: $code")
+                    viewModel.onExternalBarcodeScanned(code)
+                }
+            }
+        }
+
+        val filter = IntentFilter("com.acontus.SCAN")
+        ContextCompat.registerReceiver(
+            context,
+            receiver,
+            filter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
+
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
+
     Scaffold(
+        contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        topBar = {
+            val state = uiState
+            if (state is ScanningUiState.Success && state.isMultiSelectMode) {
+                TopAppBar(
+                    title = { Text("${state.selectedItemIds.size} ausgewählt") },
+                    navigationIcon = {
+                        IconButton(onClick = viewModel::onClearSelection) {
+                            Icon(Icons.Default.Close, contentDescription = "Schließen")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = viewModel::onDeleteSelectedItems) {
+                            Icon(Icons.Default.Delete, contentDescription = "Löschen")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        },
         floatingActionButton = {
-            if (uiState is ScanningUiState.Success) {
+            val state = uiState
+            if (state is ScanningUiState.Success && !state.isMultiSelectMode) {
                 Box {
                     FloatingActionButton(
                         onClick = { isFabMenuExpanded = true }
                     ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Aktionen")
+                        if (state.isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        } else {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Aktionen")
+                        }
                     }
                     DropdownMenu(
                         expanded = isFabMenuExpanded,
@@ -57,7 +143,7 @@ fun ScanningScreen(
                                     contentDescription = "Konfiguration bearbeiten"
                                 )
                             })
-                        Divider()
+                        HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("Senden") },
                             onClick = {
@@ -66,7 +152,7 @@ fun ScanningScreen(
                             },
                             leadingIcon = {
                                 Icon(
-                                    Icons.Default.Send,
+                                    Icons.AutoMirrored.Filled.Send,
                                     contentDescription = "Senden"
                                 )
                             })
@@ -92,6 +178,7 @@ fun ScanningScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .consumeWindowInsets(padding)
         ) {
             when (val state = uiState) {
                 is ScanningUiState.Loading -> {
@@ -110,30 +197,160 @@ fun ScanningScreen(
                     )
                 }
                 is ScanningUiState.Success -> {
-                    Column(
+                    // Dialog handling logic
+                    if (state.showQuantityDialog) {
+                        val itemName = state.editingItem?.itemName 
+                            ?: state.selectedSearchResult?.let { 
+                                when(it) {
+                                    is SearchResult.ArticleResult -> it.article.name
+                                    is SearchResult.MaterialResult -> it.material.name
+                                }
+                            } ?: ""
+                            
+                        val initialQuantity = state.editingItem?.quantity ?: 1
+                        val confirmText = if (state.editingItem != null) "Speichern" else "Hinzufügen"
+
+                        QuantityDialog(
+                            itemName = itemName,
+                            initialQuantity = initialQuantity,
+                            confirmButtonText = confirmText,
+                            onConfirm = viewModel::onQuantityConfirmed,
+                            onDismiss = viewModel::onQuantityDialogDismissed
+                        )
+                    }
+                    
+                    if (state.submitError != null) {
+                        AlertDialog(
+                            onDismissRequest = viewModel::clearSubmitError,
+                            title = { Text("Fehler beim Senden") },
+                            text = { Text(state.submitError) },
+                            confirmButton = {
+                                TextButton(onClick = viewModel::clearSubmitError) {
+                                    Text("OK")
+                                }
+                            }
+                        )
+                    }
+
+                    var isSearchFocused by remember { mutableStateOf(false) }
+
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(16.dp)
+                            .padding(horizontal = 16.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp) // Space for FAB
                     ) {
-                        CompactConfigurationHeader(
-                            warehouse = state.activeWarehouse,
-                            bookingReason = state.activeBookingReason,
-                            batchNumber = state.activeBatchNumber,
-                            bestBeforeDate = state.activeBestBeforeDate
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Divider()
-                        Spacer(modifier = Modifier.height(16.dp))
+                        item {
+                            AnimatedVisibility(
+                                visible = !isSearchFocused && state.searchQuery.isEmpty() && !state.isMultiSelectMode,
+                                enter = expandVertically(),
+                                exit = shrinkVertically()
+                            ) {
+                                Column {
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    CompactConfigurationHeader(
+                                        warehouse = state.activeWarehouse,
+                                        bookingReason = state.activeBookingReason,
+                                        batchNumber = state.activeBatchNumber,
+                                        bestBeforeDate = state.activeBestBeforeDate
+                                    )
+                                }
+                            }
+                        }
 
-                        if (state.scannedItems.isEmpty()) {
-                            EmptyState()
+                        item {
+                            if (!state.isMultiSelectMode) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                SearchBar(
+                                    query = state.searchQuery,
+                                    onQueryChanged = viewModel::onSearchQueryChanged,
+                                    onFocusChanged = { 
+                                        isSearchFocused = it 
+                                        viewModel.isSearchFieldFocused = it
+                                    }
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            } else {
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
+                        
+                        if (state.searchResults.isNotEmpty() && !state.isMultiSelectMode) {
+                            SearchResultsList(
+                                results = state.searchResults,
+                                onResultClick = viewModel::onSearchResultSelected
+                            )
                         } else {
-                            ScannedItemsList(items = state.scannedItems)
+                            item {
+                                if (!state.isMultiSelectMode) {
+                                    HorizontalDivider()
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                            if (state.scannedItemsUi.isEmpty()) {
+                                item {
+                                    EmptyState()
+                                }
+                            } else {
+                                ScannedItemsList(
+                                    items = state.scannedItemsUi,
+                                    lastScannedItemId = state.lastScannedItemId,
+                                    isMultiSelectMode = state.isMultiSelectMode,
+                                    selectedItemIds = state.selectedItemIds,
+                                    onEditItem = viewModel::onEditItemClicked,
+                                    onLongClickItem = viewModel::onItemLongClicked,
+                                    onDeleteItem = viewModel::onDeleteItemClicked
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SearchBar(
+    query: String,
+    onQueryChanged: (String) -> Unit,
+    onFocusChanged: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChanged,
+        label = { Text("Artikel/Material suchen") },
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { onFocusChanged(it.isFocused) },
+        trailingIcon = {
+            Icon(Icons.Default.Search, contentDescription = "Search Icon")
+        }
+    )
+}
+
+fun LazyListScope.SearchResultsList(
+    results: List<SearchResult>,
+    onResultClick: (SearchResult) -> Unit
+) {
+    items(results) { result ->
+        ListItem(
+            headlineContent = {
+                when(result) {
+                    is SearchResult.ArticleResult -> Text(result.article.name)
+                    is SearchResult.MaterialResult -> Text(result.material.name)
+                }
+            },
+            supportingContent = {
+                when(result) {
+                    is SearchResult.ArticleResult -> Text("Artikel: ${result.article.articleId}")
+                    is SearchResult.MaterialResult -> Text("Material: ${result.material.materialId}")
+                }
+            },
+            modifier = Modifier.clickable { onResultClick(result) }
+        )
+        HorizontalDivider()
     }
 }
 
@@ -185,14 +402,14 @@ private fun ConfigItem(label: String, value: String) {
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f) // Label takes up 1 part of the space
+            modifier = Modifier.weight(1f)
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.End,
-            modifier = Modifier.weight(1f) // Value takes up 1 part of the space
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -200,7 +417,9 @@ private fun ConfigItem(label: String, value: String) {
 @Composable
 private fun EmptyState() {
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -210,13 +429,134 @@ private fun EmptyState() {
     }
 }
 
-@Composable
-private fun ScannedItemsList(items: List<ScannedItem>) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(items) { item ->
-            Text(text = "Scanned Item ID: ${item.id} | Qty: ${item.quantity}")
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+fun LazyListScope.ScannedItemsList(
+    items: List<ScannedItemUi>,
+    lastScannedItemId: Long? = null,
+    isMultiSelectMode: Boolean = false,
+    selectedItemIds: Set<Long> = emptySet(),
+    onEditItem: (ScannedItemUi) -> Unit,
+    onLongClickItem: (ScannedItemUi) -> Unit,
+    onDeleteItem: (ScannedItemUi) -> Unit
+) {
+    items(items, key = { it.id }) { item ->
+        val isHighlighted = item.id == lastScannedItemId
+        val isSelected = selectedItemIds.contains(item.id)
+        
+        val backgroundColor by animateColorAsState(
+            targetValue = when {
+                isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                isHighlighted -> MaterialTheme.colorScheme.primaryContainer
+                else -> Color.Transparent
+            },
+            animationSpec = tween(durationMillis = 300)
+        )
+
+        if (!isMultiSelectMode) {
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                        onDeleteItem(item)
+                        true
+                    } else {
+                        false
+                    }
+                }
+            )
+
+            SwipeToDismissBox(
+                state = dismissState,
+                backgroundContent = {
+                    val color = MaterialTheme.colorScheme.errorContainer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(color)
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Löschen",
+                            tint = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                },
+                content = {
+                    ScannedItemRow(
+                        item = item,
+                        backgroundColor = backgroundColor,
+                        isMultiSelectMode = false,
+                        isSelected = false,
+                        onEditItem = onEditItem,
+                        onLongClickItem = onLongClickItem
+                    )
+                },
+                enableDismissFromStartToEnd = false
+            )
+        } else {
+            ScannedItemRow(
+                item = item,
+                backgroundColor = backgroundColor,
+                isMultiSelectMode = true,
+                isSelected = isSelected,
+                onEditItem = onEditItem,
+                onLongClickItem = onLongClickItem
+            )
         }
+        HorizontalDivider()
     }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ScannedItemRow(
+    item: ScannedItemUi,
+    backgroundColor: Color,
+    isMultiSelectMode: Boolean,
+    isSelected: Boolean,
+    onEditItem: (ScannedItemUi) -> Unit,
+    onLongClickItem: (ScannedItemUi) -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(item.itemName) },
+        leadingContent = if (isMultiSelectMode) {
+            {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = null
+                )
+            }
+        } else null,
+        supportingContent = {
+            Column {
+                Text("ID: ${item.itemId} | ${item.itemType}")
+                Text(
+                    text = "Lager: ${item.warehouseName} | Grund: ${item.bookingReasonName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (!item.batchNumber.isNullOrEmpty() || !item.bestBeforeDate.isNullOrEmpty()) {
+                    Text(
+                        text = "Charge: ${item.batchNumber ?: "-"} | MHD: ${item.bestBeforeDate ?: "-"}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        trailingContent = {
+            Text(
+                text = "${item.quantity}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        modifier = Modifier
+            .background(backgroundColor)
+            .combinedClickable(
+                onClick = { onEditItem(item) },
+                onLongClick = { onLongClickItem(item) }
+            )
+    )
 }

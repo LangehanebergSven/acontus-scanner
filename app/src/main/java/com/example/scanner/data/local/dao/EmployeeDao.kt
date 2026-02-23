@@ -14,6 +14,9 @@ interface EmployeeDao {
     @Query("SELECT * FROM employees WHERE employeeId = :employeeId")
     suspend fun getEmployeeById(employeeId: String): Employee?
 
+    @Query("SELECT * FROM employees WHERE employeeLoginNumber = :employeeLoginNumber")
+    suspend fun getEmployeeByLoginNumber(employeeLoginNumber: String): Employee?
+
     @Query("DELETE FROM employees")
     suspend fun clearAll()
 }

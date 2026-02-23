@@ -39,12 +39,21 @@ class ScanRepository @Inject constructor(
         scanProcessDao.update(process)
     }
 
+    suspend fun deleteProcess(process: ScanProcess) {
+        val items = getScannedItemsForProcess(process.id)
+        if (items.isNotEmpty()) {
+            val itemIds = items.map { it.id }
+            scannedItemDao.deleteItemsByIds(itemIds)
+        }
+        scanProcessDao.delete(process)
+    }
+
     suspend fun getScannedItemsForProcess(processId: Long): List<ScannedItem> {
         return scannedItemDao.getItemsForProcess(processId)
     }
 
-    suspend fun addScannedItem(item: ScannedItem) {
-        scannedItemDao.insert(item)
+    suspend fun addScannedItem(item: ScannedItem): Long {
+        return scannedItemDao.insert(item)
     }
 
     suspend fun updateScannedItem(item: ScannedItem) {

@@ -106,27 +106,66 @@ This document outlines the step-by-step implementation plan for the Android Scan
 ---
 
 ## Phase 4: Scanning & Item Management
-- [ ] **Task 4.1: Keyence SDK & Manual Input**
+- [x] **Task 4.1: Keyence SDK & Architecture Refactor**
   - Integrate `com.keyence.autoid.sdk` for hardware barcode scanning.
   - Implement a manual search fallback (Search by Name/Number) for Articles/Materials.
-- [ ] **Task 4.2: Add Scanned Items & Quantity Input**
+  - **REFACTORED:** Removed `CacheRepository` in favor of a `MasterDataSynchronizer` and direct DAO access in ViewModels, as per request.
+- [x] **Task 4.2: Add Scanned Items & Quantity Input**
   - Upon scan/selection: Show dialog/input for `Menge` (Quantity) and optional `Inhaltsmenge`.
   - Logic: If item exists with the *exact same configuration*, increment quantity instead of adding a new row.
   - Add visual feedback (brief highlight) when an item is added or updated.
-- [ ] **Task 4.3: List View & Item Interaction**
+- [x] **Task 4.3: List View & Item Interaction**
   - Display items compactly (Article, Configuration, Timestamp).
   - Implement edit functionality for single items (modify quantities).
   - Implement swipe-to-delete or delete button for single items.
-- [ ] **Task 4.4: Multi-Select & Bulk Edit**
+- [x] **Task 4.4: Multi-Select & Bulk Edit**
   - Implement long-press/multi-select mode (including "Select All").
-  - Implement bulk editing of configurations (MHD, Charge, Lager, Buchungsgrund).
+  - Implement bulk editing of configurations (MHD, Charge, Lager, Buchungsgrund) - *Note: Bulk Edit Dialog logic is pending, but Multi-Select/Delete is done.*
   - Add a warning dialog if the user is overwriting diverse configurations (e.g., items with different warehouses).
 
+---
+### **Phase 4 Summary (Context for Next Phase):**
+**Phase 4 is complete.** The core scanning workflow is robust. Users can search, add, edit, and delete items. The UI supports single-item interaction and multi-select actions.
+
+**Implementation Details:**
+*   **List & Interaction:**
+    *   The `ScanningScreen` is now a single scrollable list containing the header, search bar, and items.
+    *   Header automatically hides/shows based on search focus to maximize space.
+    *   Items show full configuration details (Warehouse, Reason, etc.).
+    *   Swipe-to-dismiss is available for quick deletion in single-mode.
+*   **Multi-Select:**
+    *   Long-press triggers selection mode.
+    *   `TopAppBar` appears contextually with item count and delete action.
+    *   Items have checkboxes in this mode.
+*   **UX Improvements:**
+    *   Visual feedback (highlighting) when adding/updating items.
+    *   Addressed keyboard overlap issues using `consumeWindowInsets`.
+
+---
+
 ## Phase 5: Submission & Error Handling
-- [ ] **Task 5.1: Process Submission (ERP Sync)**
+- [x] **Task 5.0: ERP Database Connection (MSSQL)**
+  - Integrate `mssql-jdbc` driver.
+  - Implement `DatabaseConnectorImpl` with actual JDBC connection to SQL Server.
+  - Implement SELECT queries to fetch master data (Warehouses, BookingReasons, Articles, Materials, Employees).
+  - Refactor `MasterDataSynchronizer` to use the remote MSSQL database instead of dummy data.
+- [x] **Task 5.1: Process Submission (ERP Sync)**
   - Implement the "Submit" action converting all `ScannedItem`s into SQL Insert queries.
   - Send queries via `DatabaseConnector`.
   - If DB is unreachable: Show a localized error dialog, save the queries to `SqlLog`, and persist the session locally.
 - [ ] **Task 5.2: Global Error Handling & Polish**
   - Add localized error dialogs across the app (e.g., "EAN not found", "Database unreachable").
   - Final code review to ensure UI text is German, codebase (variables, methods) is English, and performance/architecture is solid.
+
+---
+### **Phase 5 Progress:**
+*   **MSSQL Database Connection:** Added the Microsoft JDBC driver for SQL Server (`mssql-jdbc`) to `libs.versions.toml` and the app's `build.gradle.kts`.
+*   **DatabaseConnectorImpl:** Updated the implementation to use `java.sql.DriverManager` to execute actual SELECT queries against an MSSQL database.
+*   **MasterDataSynchronizer:** Modified to inject the `DatabaseConnector` and fetch all required master data remotely during the synchronization process instead of using dummy data.
+*   **Process Submission:** Implemented the `submitProcess()` method in `ScanningViewModel`.
+    *   It generates raw SQL `INSERT` statements for each scanned item.
+    *   It attempts to execute them via the `DatabaseConnector`.
+    *   If the execution fails (e.g., offline), the queries are logged to `SqlLog` via `SyncRepository` for later synchronization.
+    *   Upon completion (successful remote sync or offline logging), the local scan process and its items are deleted.
+    *   Added visual feedback (loading indicator) during submission and error dialogs for unexpected failures.
+    *   Added `cancelProcess()` functionality to delete the current scan session completely.

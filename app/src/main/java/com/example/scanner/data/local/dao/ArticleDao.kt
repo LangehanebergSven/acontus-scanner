@@ -20,6 +20,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE name LIKE '%' || :query || '%' OR articleId LIKE '%' || :query || '%'")
     suspend fun searchArticles(query: String): List<Article>
 
+    @Query("SELECT COUNT(*) FROM articles")
+    suspend fun getCount(): Int
+
     @Query("DELETE FROM articles")
     suspend fun clearAll()
 }

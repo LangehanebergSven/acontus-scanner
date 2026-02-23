@@ -1,14 +1,8 @@
 package com.example.scanner.data.di
 
-import com.example.scanner.data.local.dao.ArticleDao
-import com.example.scanner.data.local.dao.BookingReasonDao
-import com.example.scanner.data.local.dao.EmployeeDao
-import com.example.scanner.data.local.dao.MaterialDao
 import com.example.scanner.data.local.dao.ScanProcessDao
 import com.example.scanner.data.local.dao.ScannedItemDao
 import com.example.scanner.data.local.dao.SqlLogDao
-import com.example.scanner.data.local.dao.WarehouseDao
-import com.example.scanner.data.repository.CacheRepository
 import com.example.scanner.data.repository.ScanRepository
 import com.example.scanner.data.repository.SyncRepository
 import com.example.scanner.data.source.DatabaseConnector
@@ -27,18 +21,6 @@ object RepositoryModule {
     @Singleton
     fun provideDatabaseConnector(): DatabaseConnector {
         return DatabaseConnectorImpl()
-    }
-
-    @Provides
-    @Singleton
-    fun provideCacheRepository(
-        employeeDao: EmployeeDao,
-        articleDao: ArticleDao,
-        materialDao: MaterialDao,
-        warehouseDao: WarehouseDao,
-        bookingReasonDao: BookingReasonDao
-    ): CacheRepository {
-        return CacheRepository(employeeDao, articleDao, materialDao, warehouseDao, bookingReasonDao)
     }
 
     @Provides

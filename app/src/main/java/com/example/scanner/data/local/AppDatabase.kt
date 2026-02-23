@@ -17,7 +17,7 @@ import com.example.scanner.data.model.*
         ScannedItem::class,
         SqlLog::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
