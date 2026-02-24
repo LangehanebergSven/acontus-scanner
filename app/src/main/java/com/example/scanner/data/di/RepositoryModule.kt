@@ -2,7 +2,6 @@ package com.example.scanner.data.di
 
 import com.example.scanner.data.local.dao.ScanProcessDao
 import com.example.scanner.data.local.dao.ScannedItemDao
-import com.example.scanner.data.local.dao.SqlLogDao
 import com.example.scanner.data.repository.ScanRepository
 import com.example.scanner.data.repository.SyncRepository
 import com.example.scanner.data.source.DatabaseConnector
@@ -35,9 +34,8 @@ object RepositoryModule {
     @Provides
     @Singleton
     fun provideSyncRepository(
-        sqlLogDao: SqlLogDao,
         databaseConnector: DatabaseConnector
     ): SyncRepository {
-        return SyncRepository(sqlLogDao, databaseConnector)
+        return SyncRepository(databaseConnector)
     }
 }

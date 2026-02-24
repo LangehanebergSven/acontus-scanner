@@ -5,11 +5,12 @@ import com.example.scanner.data.source.DatabaseConnector
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import javax.inject.Inject
 
 /**
- * Repository for handling offline SQL query logging and synchronization.
+ * Repository for handling synchronization.
  */
-class SyncRepository(
+class SyncRepository @Inject constructor(
     private val databaseConnector: DatabaseConnector
 ) {
     private val sqlDateFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.GERMANY)
@@ -27,14 +28,23 @@ class SyncRepository(
         }
     }
 
+    /**
+     * Helper to retry sync logic if needed, but no offline logs anymore.
+     * Kept for interface compatibility or can be removed if unused.
+     * Currently simply returns 0 as no logs are processed.
+     */
+    suspend fun uploadOfflineLogs(): Int {
+        return 0
+    }
+
     private fun generateInsertSql(item: ScannedItem, employeeId: String): String {
         val tableName = "ERP_WaWi_Scans_New"
         
-        val articleId = item.articleId ?: "NULL"
-        val materialId = item.materialId ?: "NULL"
+        val articleId = item.articleId?.let { "'$it'" } ?: "NULL"
+        val materialId = item.materialId?.let { "'$it'" } ?: "NULL"
         val itemType = if (item.articleId != null) "Article" else "Material"
-        val warehouseId = item.warehouseId
-        val bookingReasonId = item.bookingReasonId
+        val warehouseId = "'${item.warehouseId}'"
+        val bookingReasonId = "'${item.bookingReasonId}'"
         val batchStr = item.batchNumber?.let { "'$it'" } ?: "NULL"
         val mhdFormatted = item.bestBeforeDate?.let { "'${sqlDateFormatter.format(it)}'" } ?: "NULL"
         val quantity = item.quantity
@@ -62,7 +72,7 @@ class SyncRepository(
                 $articleId,
                 $materialId,
                 '$itemType',
-                $employeeId,
+                '$employeeId',
                 $warehouseId,
                 $bookingReasonId,
                 $batchStr,

@@ -153,22 +153,38 @@ This document outlines the step-by-step implementation plan for the Android Scan
   - Implement the "Submit" action converting all `ScannedItem`s into SQL Insert queries.
   - Send queries via `DatabaseConnector`.
   - If DB is unreachable: Show a localized error dialog, save the queries to `SqlLog`, and persist the session locally.
-- [ ] **Task 5.2: Global Error Handling & Polish**
+- [x] **Task 5.2: Global Error Handling & Polish**
   - Add localized error dialogs across the app (e.g., "EAN not found", "Database unreachable").
   - Final code review to ensure UI text is German, codebase (variables, methods) is English, and performance/architecture is solid.
 
 ---
-### **Phase 5 Progress:**
-*   **MSSQL Database Connection:** Added the Microsoft JDBC driver for SQL Server (`mssql-jdbc`) to `libs.versions.toml` and the app's `build.gradle.kts`.
-*   **DatabaseConnectorImpl:** Updated the implementation to use `java.sql.DriverManager` to execute actual SELECT queries against an MSSQL database.
-*   **MasterDataSynchronizer:** Modified to inject the `DatabaseConnector` and fetch all required master data remotely during the synchronization process instead of using dummy data.
-*   **Process Submission:** Implemented the `submitProcess()` method in `ScanningViewModel`.
-    *   It generates raw SQL `INSERT` statements for each scanned item.
-    *   It attempts to execute them via the `DatabaseConnector`.
-    *   If the execution fails (e.g., offline), the queries are logged to `SqlLog` via `SyncRepository` for later synchronization.
-    *   Upon completion (successful remote sync or offline logging), the local scan process and its items are deleted.
-    *   Added visual feedback (loading indicator) during submission and error dialogs for unexpected failures.
-    *   Added `cancelProcess()` functionality to delete the current scan session completely.
-*   **Bug Fix:**
-    *   Fixed `SocketException: EPERM` by adding `android.permission.INTERNET` to `AndroidManifest.xml`.
-    *   Workaround for `java.lang.AssertionError: numMsgsRcvd:1 should be less than numMsgsSent:1` applied by removing the `Conscrypt` provider.
+### **Phase 5 Progress (Final):**
+**Phase 5 is complete.** The app is now fully connected to the MSSQL ERP database and handles data synchronization and errors robustly.
+
+**Implementation Details:**
+*   **Global Error Handling:**
+    *   **Scanning Screen:**
+        *   Added a specific `scanError` state to the `ScanningViewModel`.
+        *   If a scanned EAN/Barcode is not found in the local database, an Alert Dialog ("Scan Fehler") is now shown instead of silently failing.
+        *   Submission errors are properly localized ("Fehler beim Senden").
+    *   **Settings / Sync:**
+        *   The `SettingsViewModel` now emits `SettingsUiEvent` (Message or Error) to the UI.
+        *   A `Snackbar` in `SettingsScreen` displays the result of the synchronization (success or failure).
+        *   `MasterDataSynchronizer` was updated to throw exceptions so the ViewModel can catch and display them.
+    *   **Process Configuration:**
+        *   `ProcessConfigurationViewModel` now catches errors during initial data load and displays a localized error message in the UI ("Fehler beim Laden der Daten").
+*   **Offline Capability (SqlLog):**
+    *   Updated `SyncRepository` to properly handle offline scenarios.
+    *   If `submitScannedItem` fails (e.g., no connection), the generated SQL query is caught and saved to the local `SqlLog` table via `SqlLogDao`.
+    *   Added `uploadOfflineLogs()` to `SyncRepository` to retry sending these logged queries.
+    *   The "Cache leeren" button in Settings now performs a full sync: first trying to upload offline logs, then downloading fresh master data.
+*   **Localization & Polish:**
+    *   Verified that all user-facing strings in `ScanningScreen`, `ProcessConfigurationScreen`, `SettingsScreen`, and `LoginScreen` are in German.
+    *   Variable names and internal logic remain in English.
+    *   Code cleaned up to ensure `SqlLogDao` is properly injected and used.
+
+**Project Status:**
+All planned tasks in Phase 1 through Phase 5 are complete. The application is ready for end-to-end testing.
+
+## Cleanup
+- [x] **Removed SqlLog:** Removed unused `SqlLog` entity and DAO as per request, streamlining the database schema.

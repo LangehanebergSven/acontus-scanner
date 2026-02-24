@@ -9,8 +9,10 @@ import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.scanner.ui.theme.ScannerTheme
+import com.example.scanner.ui.viewmodel.SettingsUiEvent
 import com.example.scanner.ui.viewmodel.SettingsViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,8 +36,20 @@ fun SettingsScreen(
     onStartProcess: () -> Unit
 ) {
     val lastSyncTimestamp by viewModel.lastSyncTimestamp.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(viewModel.uiEvent) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is SettingsUiEvent.ShowMessage -> snackbarHostState.showSnackbar(event.message)
+                is SettingsUiEvent.ShowError -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Einstellungen") },
@@ -61,6 +76,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(32.dp))
             CacheCard(
                 lastSyncTimestamp = lastSyncTimestamp,
+                isLoading = isLoading,
                 onClearCache = { viewModel.onClearCacheClicked() }
             )
         }
@@ -93,7 +109,7 @@ private fun InfoCard() {
 }
 
 @Composable
-private fun CacheCard(lastSyncTimestamp: Long, onClearCache: () -> Unit) {
+private fun CacheCard(lastSyncTimestamp: Long, isLoading: Boolean, onClearCache: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             val formattedDate = if (lastSyncTimestamp > 0) {
@@ -110,9 +126,17 @@ private fun CacheCard(lastSyncTimestamp: Long, onClearCache: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = onClearCache,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isLoading
             ) {
-                Text("Cache jetzt leeren")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Cache jetzt leeren")
+                }
             }
         }
     }

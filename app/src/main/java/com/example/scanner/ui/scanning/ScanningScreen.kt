@@ -232,6 +232,19 @@ fun ScanningScreen(
                         )
                     }
 
+                    if (state.scanError != null) {
+                        AlertDialog(
+                            onDismissRequest = viewModel::clearScanError,
+                            title = { Text("Scan Fehler") },
+                            text = { Text(state.scanError) },
+                            confirmButton = {
+                                TextButton(onClick = viewModel::clearScanError) {
+                                    Text("OK")
+                                }
+                            }
+                        )
+                    }
+
                     var isSearchFocused by remember { mutableStateOf(false) }
 
                     LazyColumn(

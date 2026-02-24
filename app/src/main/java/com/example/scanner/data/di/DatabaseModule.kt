@@ -9,7 +9,6 @@ import com.example.scanner.data.local.dao.EmployeeDao
 import com.example.scanner.data.local.dao.MaterialDao
 import com.example.scanner.data.local.dao.ScanProcessDao
 import com.example.scanner.data.local.dao.ScannedItemDao
-import com.example.scanner.data.local.dao.SqlLogDao
 import com.example.scanner.data.local.dao.WarehouseDao
 import dagger.Module
 import dagger.Provides
@@ -54,7 +53,4 @@ object DatabaseModule {
 
     @Provides
     fun provideScannedItemDao(appDatabase: AppDatabase): ScannedItemDao = appDatabase.scannedItemDao()
-
-    @Provides
-    fun provideSqlLogDao(appDatabase: AppDatabase): SqlLogDao = appDatabase.sqlLogDao()
 }

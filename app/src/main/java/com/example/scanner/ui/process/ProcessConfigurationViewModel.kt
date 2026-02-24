@@ -55,7 +55,7 @@ class ProcessConfigurationViewModel @Inject constructor(
                 _selectedBookingReason.value = bookingReasons.firstOrNull()
             } catch (e: Exception) {
                 Log.e("ProcessConfigurationViewModel.loadInitialData", "Failed to load data", e)
-                _uiState.value = ProcessUiState.Error("Failed to load data: ${e.message}")
+                _uiState.value = ProcessUiState.Error("Fehler beim Laden der Daten: ${e.message}")
             }
         }
     }
@@ -81,7 +81,7 @@ class ProcessConfigurationViewModel @Inject constructor(
                 )
                 onProcessStarted(processId)
             } else {
-                // Handle error - e.g., show a message to the user
+                _uiState.value = ProcessUiState.Error("Bitte Lager und Buchungsgrund auswählen.")
             }
         }
     }

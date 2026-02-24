@@ -37,13 +37,8 @@ class MasterDataSynchronizer @Inject constructor(
     }
 
     suspend fun syncIfNeeded() {
-        if (isSyncNeeded()) {
+        if (isSyncNeeded() || warehouseDao.getAll().isEmpty()) {
             performSync()
-        } else {
-            // Check if DB is empty (first start case or cleared data) or if master data is missing
-            if (warehouseDao.getAll().isEmpty() || articleDao.getCount() == 0 || materialDao.getCount() == 0) {
-                performSync()
-            }
         }
     }
 
@@ -60,18 +55,18 @@ class MasterDataSynchronizer @Inject constructor(
             clearAllData()
 
             // 3. Insert fresh data from ERP into local DB
-            if (warehouses.isNotEmpty()) warehouseDao.insertAll(warehouses)
-            if (bookingReasons.isNotEmpty()) bookingReasonDao.insertAll(bookingReasons)
-            if (articles.isNotEmpty()) articleDao.insertAll(articles)
-            if (materials.isNotEmpty()) materialDao.insertAll(materials)
-            if (employees.isNotEmpty()) employeeDao.insertAll(employees)
+            warehouseDao.insertAll(warehouses)
+            bookingReasonDao.insertAll(bookingReasons)
+            articleDao.insertAll(articles)
+            materialDao.insertAll(materials)
+            employeeDao.insertAll(employees)
 
             // 4. Update timestamp
             prefs.edit { putLong(KEY_LAST_SYNC, System.currentTimeMillis()) }
             Log.i("MasterDataSynchronizer", "Master data synchronization successful.")
         } catch (e: Exception) {
             Log.e("MasterDataSynchronizer", "Master data synchronization failed.", e)
-            // Fallback could be implemented here or left as is to retry later
+            throw e
         }
     }
 

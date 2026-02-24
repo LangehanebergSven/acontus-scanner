@@ -137,7 +137,7 @@ class ScanningViewModel @Inject constructor(
                 material != null -> null to material.materialId
                 else -> {
                     Log.w("Scanner", "Kein Artikel oder Material gefunden für EAN: $barcode")
-                    // Hier könnte man zukünftig noch eine kleine Fehlermeldung via Snackbar einbauen
+                    _uiState.value = currentState.copy(scanError = "Kein Artikel oder Material gefunden für EAN: $barcode")
                     return@launch
                 }
             }
@@ -321,7 +321,7 @@ class ScanningViewModel @Inject constructor(
                 loadScanData(process)
             } catch (e: Exception) {
                 Log.e("ScanningViewModel", "Failed to load active process", e)
-                _uiState.value = ScanningUiState.Error("Failed to load active process: ${e.message}")
+                _uiState.value = ScanningUiState.Error("Fehler beim Laden des Prozesses: ${e.message}")
             }
         }
     }
@@ -363,7 +363,8 @@ class ScanningViewModel @Inject constructor(
             isMultiSelectMode = previousState?.isMultiSelectMode ?: false,
             selectedItemIds = previousState?.selectedItemIds ?: emptySet(),
             isSubmitting = false,
-            submitError = null
+            submitError = null,
+            scanError = null
         )
         
         if (lastUpdatedItemId != null) {
@@ -431,6 +432,13 @@ class ScanningViewModel @Inject constructor(
         }
     }
 
+    fun clearScanError() {
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(scanError = null)
+        }
+    }
+
     fun submitProcess() {
         val currentState = _uiState.value as? ScanningUiState.Success ?: return
 
@@ -464,7 +472,7 @@ class ScanningViewModel @Inject constructor(
                     if (refreshedState is ScanningUiState.Success) {
                         _uiState.value = refreshedState.copy(
                             isSubmitting = false,
-                            submitError = "Fehler beim Senden: ${e.message}"
+                            submitError = "Fehler beim Senden: ${e.localizedMessage ?: e.message}"
                         )
                     }
                 } else {
@@ -549,7 +557,8 @@ sealed interface ScanningUiState {
         val selectedItemIds: Set<Long> = emptySet(),
         // Submission state
         val isSubmitting: Boolean = false,
-        val submitError: String? = null
+        val submitError: String? = null,
+        val scanError: String? = null
     ) : ScanningUiState
 
     data class Error(val message: String) : ScanningUiState
