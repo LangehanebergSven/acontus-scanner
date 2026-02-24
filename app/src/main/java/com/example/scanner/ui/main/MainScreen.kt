@@ -9,6 +9,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ fun MainScreen(
     processId: Long,
     rootNavController: NavController,
     scanningViewModel: ScanningViewModel,
+    mainViewModel: MainViewModel,
     onLogout: () -> Unit,
     onStartNewProcess: () -> Unit
 ) {
@@ -36,6 +38,7 @@ fun MainScreen(
         scanningViewModel.loadActiveProcess(processId)
     }
 
+    val employeeName by mainViewModel.employeeName.collectAsState()
     val navController = rememberNavController()
     val items = listOf(
         BottomNavigationItem.Home,
@@ -73,7 +76,10 @@ fun MainScreen(
             Modifier.padding(innerPadding)
         ) {
             composable(BottomNavigationItem.Home.route) {
-                HomeScreen(navController)
+                HomeScreen(
+                    navController = navController,
+                    userName = employeeName ?: ""
+                )
             }
             composable(BottomNavigationItem.Scanning.route) {
                 ScanningScreen(

@@ -100,6 +100,7 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController, mainView
                 processId = processId,
                 rootNavController = navController,
                 scanningViewModel = scanningViewModel,
+                mainViewModel = mainViewModel,
                 onLogout = {
                     navController.navigate("login") {
                         popUpTo("main_graph/{processId}") { inclusive = true }

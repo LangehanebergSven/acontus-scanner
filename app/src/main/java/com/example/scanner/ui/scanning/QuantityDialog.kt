@@ -19,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -32,10 +33,16 @@ fun QuantityDialog(
     onConfirm: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Use TextFieldValue to handle selection/cursor position if needed, 
-    // but String is enough for simple input. 
-    // Using String state to pre-fill initial quantity.
-    var quantityText by remember { mutableStateOf(initialQuantity.toString()) }
+    val initialText = initialQuantity.toString()
+    // Use TextFieldValue to handle selection
+    var quantityValue by remember { 
+        mutableStateOf(
+            TextFieldValue(
+                text = initialText,
+                selection = TextRange(0, initialText.length) // Pre-select all
+            )
+        ) 
+    }
     val focusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -52,10 +59,10 @@ fun QuantityDialog(
                 Text(text = "Menge eingeben:")
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = quantityText,
-                    onValueChange = {
-                        if (it.all { char -> char.isDigit() }) {
-                            quantityText = it
+                    value = quantityValue,
+                    onValueChange = { newValue ->
+                        if (newValue.text.all { char -> char.isDigit() }) {
+                            quantityValue = newValue
                         }
                     },
                     label = { Text("Menge") },
@@ -64,13 +71,18 @@ fun QuantityDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                quantityValue = quantityValue.copy(selection = TextRange(0, quantityValue.text.length))
+                            }
+                        }
                 )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val quantity = quantityText.toIntOrNull() ?: 0
+                    val quantity = quantityValue.text.toIntOrNull() ?: 0
                     if (quantity > 0) {
                         onConfirm(quantity)
                     }

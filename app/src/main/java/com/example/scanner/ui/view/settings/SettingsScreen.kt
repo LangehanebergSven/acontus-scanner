@@ -1,5 +1,6 @@
 package com.example.scanner.ui.view.settings
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,9 +17,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.scanner.R
 import com.example.scanner.ui.theme.ScannerTheme
 import com.example.scanner.ui.viewmodel.SettingsUiEvent
 import com.example.scanner.ui.viewmodel.SettingsViewModel
@@ -51,16 +54,28 @@ fun SettingsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text("Einstellungen") },
+            CenterAlignedTopAppBar(
+                title = { 
+                    Text(
+                        "Einstellungen",
+                        style = MaterialTheme.typography.titleLarge
+                    ) 
+                },
                 actions = {
-                    IconButton(onClick = {
+                    TextButton(onClick = {
                         viewModel.onLogoutClicked()
                         onLogout()
                     }) {
-                        Icon(Icons.Default.Logout, contentDescription = "Abmelden")
+                        Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Abmelden")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
             )
         }
     ) { padding ->
@@ -68,17 +83,44 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            InfoCard()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                InfoCard()
+                Spacer(modifier = Modifier.height(32.dp))
+                CacheCard(
+                    lastSyncTimestamp = lastSyncTimestamp,
+                    isLoading = isLoading,
+                    onClearCache = { viewModel.onClearCacheClicked() }
+                )
+            }
+            
+            Spacer(modifier = Modifier.weight(1f))
             Spacer(modifier = Modifier.height(32.dp))
-            CacheCard(
-                lastSyncTimestamp = lastSyncTimestamp,
-                isLoading = isLoading,
-                onClearCache = { viewModel.onClearCacheClicked() }
-            )
+
+            Column(
+                modifier = Modifier
+                    .padding(bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Powered by",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.acontus_rgb),
+                    contentDescription = "Acontus Logo",
+                    modifier = Modifier.height(30.dp)
+                )
+            }
         }
     }
 }
@@ -92,13 +134,13 @@ private fun InfoCard() {
                 title = "App Version",
                 value = "1.0.0 (Dummy)"
             )
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SettingItem(
                 icon = Icons.Default.Info,
                 title = "Build-Nummer",
                 value = "20240729-01 (Dummy)"
             )
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SettingItem(
                 icon = Icons.Default.Info,
                 title = "Unternehmen",

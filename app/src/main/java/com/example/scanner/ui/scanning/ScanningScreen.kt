@@ -351,6 +351,7 @@ fun SearchBar(
         value = query,
         onValueChange = onQueryChanged,
         label = { Text("Artikel/Material suchen") },
+        singleLine = true,
         modifier = modifier
             .fillMaxWidth()
             .onFocusChanged { onFocusChanged(it.isFocused) },
@@ -413,7 +414,7 @@ private fun CompactConfigurationHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             ConfigItem(label = "Lager:", value = warehouse?.name ?: "-")
             ConfigItem(label = "Grund:", value = bookingReason?.reason ?: "-")

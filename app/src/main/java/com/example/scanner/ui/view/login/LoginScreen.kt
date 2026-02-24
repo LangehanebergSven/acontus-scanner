@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -76,10 +78,15 @@ fun LoginScreen(
                 
                 OutlinedTextField(
                     value = personalNr,
-                    onValueChange = { personalNr = it },
+                    onValueChange = { newValue ->
+                         if (newValue.all { it.isDigit() }) {
+                             personalNr = newValue
+                         }
+                    },
                     label = { Text("Personal-Nr.") },
                     singleLine = true,
-                    enabled = !isSyncing
+                    enabled = !isSyncing,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 
                 Spacer(modifier = Modifier.height(24.dp))
