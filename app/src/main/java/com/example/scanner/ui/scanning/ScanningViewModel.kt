@@ -220,6 +220,58 @@ class ScanningViewModel @Inject constructor(
         }
     }
 
+    fun onBulkEditItemsClicked() {
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(showBulkEditDialog = true)
+        }
+    }
+
+    fun onBulkEditDialogDismissed() {
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            _uiState.value = currentState.copy(showBulkEditDialog = false)
+        }
+    }
+
+    fun onBulkEditConfirmed(
+        warehouse: Warehouse?,
+        bookingReason: BookingReason?,
+        batchNumber: String?,
+        bestBeforeDate: Date?
+    ) {
+        val currentState = _uiState.value
+        if (currentState is ScanningUiState.Success) {
+            viewModelScope.launch {
+                val itemsToUpdate = currentState.rawScannedItems.filter { currentState.selectedItemIds.contains(it.id) }
+                
+                // If any field is null, we keep the original value? 
+                // Or does the dialog force selection?
+                // The dialog should probably pass the new values to apply.
+                // If the user selected a warehouse, we apply it. If they selected "No Change" (not implemented yet), we keep original.
+                // Assuming the dialog passes the *desired* new state for all selected items.
+                
+                val updatedItems = itemsToUpdate.map { item ->
+                    item.copy(
+                        warehouseId = warehouse?.warehouseId ?: item.warehouseId,
+                        bookingReasonId = bookingReason?.bookingReasonId ?: item.bookingReasonId,
+                        batchNumber = batchNumber, // Nullable update
+                        bestBeforeDate = bestBeforeDate // Nullable update
+                    )
+                }
+                
+                // Batch update
+                for (item in updatedItems) {
+                    scanRepository.updateScannedItem(item)
+                }
+                
+                onClearSelection()
+                onBulkEditDialogDismissed()
+                loadActiveProcess(currentState.process.id)
+            }
+        }
+    }
+
     fun onDeleteItemClicked(item: ScannedItemUi) {
         val currentState = _uiState.value
         if (currentState is ScanningUiState.Success) {
@@ -364,7 +416,8 @@ class ScanningViewModel @Inject constructor(
             selectedItemIds = previousState?.selectedItemIds ?: emptySet(),
             isSubmitting = false,
             submitError = null,
-            scanError = null
+            scanError = null,
+            showBulkEditDialog = false
         )
         
         if (lastUpdatedItemId != null) {
@@ -555,6 +608,7 @@ sealed interface ScanningUiState {
         // Multi-select state
         val isMultiSelectMode: Boolean = false,
         val selectedItemIds: Set<Long> = emptySet(),
+        val showBulkEditDialog: Boolean = false,
         // Submission state
         val isSubmitting: Boolean = false,
         val submitError: String? = null,

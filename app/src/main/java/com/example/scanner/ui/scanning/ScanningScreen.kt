@@ -45,6 +45,7 @@ import com.example.scanner.data.model.Warehouse
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,6 +101,9 @@ fun ScanningScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = viewModel::onBulkEditItemsClicked) {
+                            Icon(Icons.Default.Edit, contentDescription = "Bearbeiten")
+                        }
                         IconButton(onClick = viewModel::onDeleteSelectedItems) {
                             Icon(Icons.Default.Delete, contentDescription = "Löschen")
                         }
@@ -216,6 +220,19 @@ fun ScanningScreen(
                             confirmButtonText = confirmText,
                             onConfirm = viewModel::onQuantityConfirmed,
                             onDismiss = viewModel::onQuantityDialogDismissed
+                        )
+                    }
+
+                    if (state.showBulkEditDialog) {
+                        BulkEditDialog(
+                            initialWarehouse = state.activeWarehouse,
+                            initialBookingReason = state.activeBookingReason,
+                            initialBatchNumber = state.activeBatchNumber,
+                            initialBestBeforeDate = state.activeBestBeforeDate,
+                            allWarehouses = state.allWarehouses,
+                            allBookingReasons = state.allBookingReasons,
+                            onConfirm = viewModel::onBulkEditConfirmed,
+                            onDismiss = viewModel::onBulkEditDialogDismissed
                         )
                     }
                     
@@ -572,4 +589,189 @@ fun ScannedItemRow(
                 onLongClick = { onLongClickItem(item) }
             )
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BulkEditDialog(
+    initialWarehouse: Warehouse?,
+    initialBookingReason: BookingReason?,
+    initialBatchNumber: String?,
+    initialBestBeforeDate: Date?,
+    allWarehouses: List<Warehouse>,
+    allBookingReasons: List<BookingReason>,
+    onConfirm: (Warehouse?, BookingReason?, String?, Date?) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var warehouse by remember { mutableStateOf(initialWarehouse) }
+    var bookingReason by remember { mutableStateOf(initialBookingReason) }
+    var batchNumber by remember { mutableStateOf(initialBatchNumber) }
+    var bestBeforeDate by remember { mutableStateOf(initialBestBeforeDate) }
+
+    var showWarehouseDialog by remember { mutableStateOf(false) }
+    var showBookingReasonDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showWarehouseDialog) {
+        SelectionDialog(
+            title = "Lager wählen",
+            items = allWarehouses,
+            itemText = { it.name },
+            onDismiss = { showWarehouseDialog = false },
+            onSelect = {
+                warehouse = it
+                showWarehouseDialog = false
+            }
+        )
+    }
+
+    if (showBookingReasonDialog) {
+        SelectionDialog(
+            title = "Buchungsgrund wählen",
+            items = allBookingReasons,
+            itemText = { it.reason },
+            onDismiss = { showBookingReasonDialog = false },
+            onSelect = {
+                bookingReason = it
+                showBookingReasonDialog = false
+            }
+        )
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = bestBeforeDate?.time
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let {
+                            bestBeforeDate = Date(it + TimeZone.getDefault().getOffset(it))
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Abbrechen") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Auswahl bearbeiten") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Warehouse
+                 OutlinedTextField(
+                    value = warehouse?.name ?: "-",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Lager") },
+                    modifier = Modifier.fillMaxWidth().clickable { showWarehouseDialog = true },
+                    enabled = false,
+                     colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                // Booking Reason
+                 OutlinedTextField(
+                    value = bookingReason?.reason ?: "-",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Grund") },
+                    modifier = Modifier.fillMaxWidth().clickable { showBookingReasonDialog = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+
+                // Batch
+                OutlinedTextField(
+                    value = batchNumber ?: "",
+                    onValueChange = { batchNumber = it },
+                    label = { Text("Charge") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Date
+                val mhdFormatter = remember { SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY) }
+                OutlinedTextField(
+                    value = bestBeforeDate?.let { mhdFormatter.format(it) } ?: "",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("MHD") },
+                    modifier = Modifier.fillMaxWidth().clickable { showDatePicker = true },
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(warehouse, bookingReason, batchNumber, bestBeforeDate) }) {
+                Text("Speichern")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Abbrechen")
+            }
+        }
+    )
+}
+
+@Composable
+fun <T> SelectionDialog(
+    title: String,
+    items: List<T>,
+    itemText: (T) -> String,
+    onDismiss: () -> Unit,
+    onSelect: (T) -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Card {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(text = title, style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 300.dp)) {
+                    items(items) { item ->
+                        Text(
+                            text = itemText(item),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSelect(item) }
+                                .padding(vertical = 12.dp)
+                        )
+                        HorizontalDivider()
+                    }
+                }
+            }
+        }
+    }
 }
