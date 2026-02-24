@@ -439,8 +439,12 @@ class ScanningViewModel @Inject constructor(
             
             try {
                 // Submit items using SyncRepository
-                for (item in currentState.rawScannedItems) {
+                // Create a copy of list to iterate safely while modifying DB
+                val itemsToSubmit = currentState.rawScannedItems.toList()
+                for (item in itemsToSubmit) {
                     syncRepository.submitScannedItem(item, currentState.process.employeeId)
+                    // If successful, delete locally
+                    scanRepository.deleteScannedItems(listOf(item))
                 }
                 
                 // Process submitted successfully (or logged for offline), delete local process
@@ -449,10 +453,23 @@ class ScanningViewModel @Inject constructor(
                 
             } catch (e: Exception) {
                 Log.e("ScanningViewModel", "Error submitting process", e)
-                _uiState.value = currentState.copy(
-                    isSubmitting = false,
-                    submitError = "Fehler beim Senden: ${e.message}"
-                )
+                
+                // Reload remaining items
+                val process = scanRepository.getProcessById(currentState.process.id)
+                if (process != null) {
+                    loadScanData(process)
+                    
+                    // Restore error message
+                    val refreshedState = _uiState.value
+                    if (refreshedState is ScanningUiState.Success) {
+                        _uiState.value = refreshedState.copy(
+                            isSubmitting = false,
+                            submitError = "Fehler beim Senden: ${e.message}"
+                        )
+                    }
+                } else {
+                    _uiState.value = ScanningUiState.Error("Prozess nicht mehr gefunden: ${e.message}")
+                }
             }
         }
     }

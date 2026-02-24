@@ -9,11 +9,6 @@ import com.example.scanner.data.local.dao.BookingReasonDao
 import com.example.scanner.data.local.dao.EmployeeDao
 import com.example.scanner.data.local.dao.MaterialDao
 import com.example.scanner.data.local.dao.WarehouseDao
-import com.example.scanner.data.model.Article
-import com.example.scanner.data.model.BookingReason
-import com.example.scanner.data.model.Employee
-import com.example.scanner.data.model.Material
-import com.example.scanner.data.model.Warehouse
 import com.example.scanner.data.source.DatabaseConnector
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
