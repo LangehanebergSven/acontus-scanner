@@ -270,7 +270,8 @@ private fun EditConfigurationContent(
                 value = tempBatchNumber ?: "",
                 onValueChange = onTempBatchNumberChange,
                 label = { Text("Charge") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
             )
         }
 

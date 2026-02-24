@@ -188,3 +188,7 @@ All planned tasks in Phase 1 through Phase 5 are complete. The application is re
 
 ## Cleanup
 - [x] **Removed SqlLog:** Removed unused `SqlLog` entity and DAO as per request, streamlining the database schema.
+
+## UI Enhancements
+- [x] **Update Login UI:**
+  - Redesigned Login Screen to include `hemme_logo_full` (main branding) and `acontus_rgb` (developer branding at footer).

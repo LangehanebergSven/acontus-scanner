@@ -1,11 +1,14 @@
 package com.example.scanner.ui.view.login
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -21,9 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.scanner.R
 import com.example.scanner.ui.viewmodel.LoginState
 import com.example.scanner.ui.viewmodel.LoginViewModel
 
@@ -45,55 +50,87 @@ fun LoginScreen(
     }
 
     Scaffold { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Bitte anmelden", style = MaterialTheme.typography.titleLarge)
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            OutlinedTextField(
-                value = personalNr,
-                onValueChange = { personalNr = it },
-                label = { Text("Personal-Nr.") },
-                singleLine = true,
-                enabled = !isSyncing
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(
-                onClick = { viewModel.onLoginClicked(personalNr) },
-                enabled = loginState !is LoginState.Loading && !isSyncing
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Anmelden")
-            }
-            
-            if (isSyncing) {
-                Spacer(modifier = Modifier.height(16.dp))
-                CircularProgressIndicator()
-                Text("Daten werden synchronisiert...", style = MaterialTheme.typography.bodySmall)
-            }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            when (loginState) {
-                is LoginState.Loading -> {
-                    if (!isSyncing) CircularProgressIndicator()
+                Image(
+                    painter = painterResource(id = R.drawable.hemme_logo_full),
+                    contentDescription = "Hemme Logo",
+                    modifier = Modifier
+                        .width(200.dp)
+                        .padding(bottom = 32.dp)
+                )
+
+                Text("Bitte anmelden", style = MaterialTheme.typography.titleLarge)
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                OutlinedTextField(
+                    value = personalNr,
+                    onValueChange = { personalNr = it },
+                    label = { Text("Personal-Nr.") },
+                    singleLine = true,
+                    enabled = !isSyncing
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = { viewModel.onLoginClicked(personalNr) },
+                    enabled = loginState !is LoginState.Loading && !isSyncing
+                ) {
+                    Text("Anmelden")
                 }
-                is LoginState.Error -> {
-                    Text(
-                        text = (loginState as LoginState.Error).message,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center
-                    )
+                
+                if (isSyncing) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    CircularProgressIndicator()
+                    Text("Daten werden synchronisiert...", style = MaterialTheme.typography.bodySmall)
                 }
-                else -> {}
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                when (loginState) {
+                    is LoginState.Loading -> {
+                        if (!isSyncing) CircularProgressIndicator()
+                    }
+                    is LoginState.Error -> {
+                        Text(
+                            text = (loginState as LoginState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    else -> {}
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Powered by",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Image(
+                    painter = painterResource(id = R.drawable.acontus_rgb),
+                    contentDescription = "Acontus Logo",
+                    modifier = Modifier.height(30.dp)
+                )
             }
         }
     }

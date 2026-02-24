@@ -73,7 +73,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
         val query = "SELECT ERP_WaWi_Buchungsgrund.id, ERP_WaWi_Buchungsgrund.Name, ERP_WaWi_Typ.Name AS Typ, ERP_WaWi_Bewegungsart.Name AS Bewegung " +
                 "FROM ERP_WaWi_Buchungsgrund " +
                 "JOIN ERP_WaWi_Typ ON ERP_WaWi_Buchungsgrund.TypId = ERP_WaWi_Typ.Id " +
-                "JOIN ERP_WaWi_Bewegungsart ON ERP_WaWi_Bewegungsart.Id = ERP_WaWi_Typ.BewegungsartId"
+                "JOIN ERP_WaWi_Bewegungsart ON ERP_WaWi_Bewegungsart.Id = ERP_WaWi_Buchungsgrund.BewegungsartId"
 
         return executeSelect(query) { rs ->
             BookingReason(
