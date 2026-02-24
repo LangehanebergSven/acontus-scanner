@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -263,6 +265,24 @@ fun ScanningScreen(
                     }
 
                     var isSearchFocused by remember { mutableStateOf(false) }
+
+                    val focusManager = LocalFocusManager.current
+                    val density = LocalDensity.current
+                    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+
+                    LaunchedEffect(isImeVisible) {
+                        if (!isImeVisible && isSearchFocused) {
+                            focusManager.clearFocus()
+                        }
+                    }
+
+                    BackHandler(enabled = isSearchFocused || state.searchQuery.isNotEmpty()) {
+                        if (isSearchFocused) {
+                            focusManager.clearFocus()
+                        } else {
+                            viewModel.onSearchQueryChanged("")
+                        }
+                    }
 
                     LazyColumn(
                         modifier = Modifier
