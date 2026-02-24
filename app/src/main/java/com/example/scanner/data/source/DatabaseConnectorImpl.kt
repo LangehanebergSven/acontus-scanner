@@ -60,17 +60,21 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
     }
 
     override suspend fun fetchWarehouses(): List<Warehouse> {
-        val query = "SELECT id, Name FROM ERP_WaWi_Lager"
+        val query = "SELECT LagerId, Lagerbezeichnung FROM WarenwirtschaftLagerstammdaten where Aktiv = 1"
         return executeSelect(query) { rs ->
             Warehouse(
-                warehouseId = rs.getString("id") ?: "",
-                name = rs.getString("Name") ?: ""
+                warehouseId = rs.getString("LagerId") ?: "",
+                name = rs.getString("Lagerbezeichnung") ?: ""
             )
         }
     }
 
     override suspend fun fetchBookingReasons(): List<BookingReason> {
-        val query = "SELECT id, Name FROM ERP_WaWi_Buchungsgrund"
+        val query = "SELECT ERP_WaWi_Buchungsgrund.id, ERP_WaWi_Buchungsgrund.Name, ERP_WaWi_Typ.Name AS Typ, ERP_WaWi_Bewegungsart.Name AS Bewegung " +
+                "FROM ERP_WaWi_Buchungsgrund " +
+                "JOIN ERP_WaWi_Typ ON ERP_WaWi_Buchungsgrund.TypId = ERP_WaWi_Typ.Id " +
+                "JOIN ERP_WaWi_Bewegungsart ON ERP_WaWi_Bewegungsart.Id = ERP_WaWi_Typ.BewegungsartId"
+
         return executeSelect(query) { rs ->
             BookingReason(
                 bookingReasonId = rs.getString("id") ?: "",
