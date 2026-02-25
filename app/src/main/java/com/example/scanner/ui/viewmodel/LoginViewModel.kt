@@ -33,7 +33,7 @@ class LoginViewModel @Inject constructor(
                 // Login successful, pass the technical employeeId
                 _loginState.value = LoginState.Success(employee.employeeId)
             } else {
-                _loginState.value = LoginState.Error("Personal-Nr. ($personalNr) nicht gefunden. Bitte Stammdaten synchronisieren.")
+                _loginState.value = LoginState.Error("Personal-Nr. ($personalNr) nicht gefunden.")
             }
         }
     }

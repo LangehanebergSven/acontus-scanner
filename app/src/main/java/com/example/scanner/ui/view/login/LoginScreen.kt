@@ -15,6 +15,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,16 +44,25 @@ fun LoginScreen(
 ) {
     var personalNr by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(loginState) {
-        if (loginState is LoginState.Success) {
-            val employeeId = (loginState as LoginState.Success).employeeId
-            onLoginSuccess(employeeId)
-            viewModel.resetState()
+        when (val state = loginState) {
+            is LoginState.Success -> {
+                onLoginSuccess(state.employeeId)
+                viewModel.resetState()
+            }
+            is LoginState.Error -> {
+                snackbarHostState.showSnackbar(state.message)
+                viewModel.resetState()
+            }
+            else -> {}
         }
     }
 
-    Scaffold { padding ->
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -106,18 +117,8 @@ fun LoginScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                when (loginState) {
-                    is LoginState.Loading -> {
-                        if (!isSyncing) CircularProgressIndicator()
-                    }
-                    is LoginState.Error -> {
-                        Text(
-                            text = (loginState as LoginState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                    else -> {}
+                if (loginState is LoginState.Loading && !isSyncing) {
+                    CircularProgressIndicator()
                 }
             }
 
