@@ -1,6 +1,7 @@
 package com.example.scanner.data.source
 
 import android.util.Log
+import com.example.scanner.BuildConfig
 import com.example.scanner.data.model.Article
 import com.example.scanner.data.model.BookingReason
 import com.example.scanner.data.model.Employee
@@ -15,9 +16,9 @@ import javax.inject.Inject
 class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
 
     // jtds is very old, but works. the modern jdbc driver for mssql doesn't work
-    private val dbUrl = "jdbc:jtds:sqlserver://192.168.2.3:1433/Daten_Hemme_Schmargendorf_251221;ssl=require"
-    private val user = "daten_user"
-    private val password = "\$Axyzwert123"
+    private val dbUrl = BuildConfig.DB_URL
+    private val user = BuildConfig.DB_USER
+    private val password = BuildConfig.DB_PASSWORD
 
     init {        // Explicitly load the driver
         try {

@@ -23,12 +23,20 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "DB_URL", "\"jdbc:jtds:sqlserver://192.168.2.3:1433/Daten_Hemme_Schmargendorf_251221;ssl=require\"")
+            buildConfigField("String", "DB_USER", "\"daten_user\"")
+            buildConfigField("String", "DB_PASSWORD", "\"\$Axyzwert123\"")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "DB_URL", "\"jdbc:jtds:sqlserver://192.168.2.3:1433/Daten_Hemme_Schmargendorf_251221;ssl=require\"")
+            buildConfigField("String", "DB_USER", "\"daten_user\"")
+            buildConfigField("String", "DB_PASSWORD", "\"\$Axyzwert123\"")
         }
     }
 
@@ -38,6 +46,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -2,14 +2,16 @@ package com.example.scanner.ui.view.login
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -27,9 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.scanner.R
@@ -45,6 +47,8 @@ fun LoginScreen(
     var personalNr by remember { mutableStateOf("") }
     val loginState by viewModel.loginState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scrollState = rememberScrollState()
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(loginState) {
         when (val state = loginState) {
@@ -63,68 +67,71 @@ fun LoginScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(scrollState),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Image(
+                painter = painterResource(id = R.drawable.hemme_logo_full),
+                contentDescription = "Hemme Logo",
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.hemme_logo_full),
-                    contentDescription = "Hemme Logo",
-                    modifier = Modifier
-                        .width(200.dp)
-                        .padding(bottom = 32.dp)
-                )
+                    .width(200.dp)
+                    .padding(bottom = 32.dp)
+            )
 
-                Text("Bitte anmelden", style = MaterialTheme.typography.titleLarge)
-                
-                Spacer(modifier = Modifier.height(32.dp))
-                
-                OutlinedTextField(
-                    value = personalNr,
-                    onValueChange = { newValue ->
-                         if (newValue.all { it.isDigit() }) {
-                             personalNr = newValue
-                         }
-                    },
-                    label = { Text("Personal-Nr.") },
-                    singleLine = true,
-                    enabled = !isSyncing,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Button(
-                    onClick = { viewModel.onLoginClicked(personalNr) },
-                    enabled = loginState !is LoginState.Loading && !isSyncing
-                ) {
-                    Text("Anmelden")
-                }
-                
-                if (isSyncing) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    CircularProgressIndicator()
-                    Text("Daten werden synchronisiert...", style = MaterialTheme.typography.bodySmall)
-                }
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                if (loginState is LoginState.Loading && !isSyncing) {
-                    CircularProgressIndicator()
-                }
+            Text("Bitte anmelden", style = MaterialTheme.typography.titleLarge)
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            OutlinedTextField(
+                value = personalNr,
+                onValueChange = { newValue ->
+                     if (newValue.all { it.isDigit() }) {
+                         personalNr = newValue
+                     }
+                },
+                label = { Text("Personal-Nr.") },
+                singleLine = true,
+                enabled = !isSyncing,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Button(
+                onClick = { 
+                    focusManager.clearFocus()
+                    viewModel.onLoginClicked(personalNr) 
+                },
+                enabled = loginState !is LoginState.Loading && !isSyncing
+            ) {
+                Text("Anmelden")
+            }
+            
+            if (isSyncing) {
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator()
+                Text("Daten werden synchronisiert...", style = MaterialTheme.typography.bodySmall)
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            if (loginState is LoginState.Loading && !isSyncing) {
+                CircularProgressIndicator()
             }
 
+            Spacer(modifier = Modifier.weight(1f)) // Push footer to bottom if space available
+
+            Spacer(modifier = Modifier.height(32.dp)) // Minimum spacing
+
             Column(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
                     .padding(bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
