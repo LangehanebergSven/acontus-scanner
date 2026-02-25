@@ -601,6 +601,12 @@ fun ScannedItemRow(
     onEditItem: (ScannedItemUi) -> Unit,
     onLongClickItem: (ScannedItemUi) -> Unit
 ) {
+    val (prefix, color) = when (item.movementType) {
+        "Eingang" -> "+" to Color(0xFF388E3C) // Darker Green
+        "Ausgang" -> "-" to Color(0xFFD32F2F) // Darker Red
+        else -> "" to MaterialTheme.colorScheme.onSurface
+    }
+
     ListItem(
         headlineContent = { Text(item.itemName) },
         leadingContent = if (isMultiSelectMode) {
@@ -630,9 +636,10 @@ fun ScannedItemRow(
         },
         trailingContent = {
             Text(
-                text = "${item.quantity}",
+                text = "$prefix${item.quantity}",
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = color
             )
         },
         modifier = Modifier

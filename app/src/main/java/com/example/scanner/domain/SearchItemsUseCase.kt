@@ -9,12 +9,21 @@ class SearchItemsUseCase @Inject constructor(
     private val articleDao: ArticleDao,
     private val materialDao: MaterialDao
 ) {
-    suspend operator fun invoke(query: String): List<SearchResult> {
+    suspend operator fun invoke(query: String, typeFilter: String? = null): List<SearchResult> {
         if (query.isBlank()) return emptyList()
 
-        val articleResults = articleDao.searchArticles(query).map { SearchResult.ArticleResult(it) }
-        val materialResults = materialDao.searchMaterials(query).map { SearchResult.MaterialResult(it) }
+        val searchArticles = typeFilter == null || typeFilter == "Artikel"
+        val searchMaterials = typeFilter == null || typeFilter == "Material"
 
-        return articleResults + materialResults
+        val results = mutableListOf<SearchResult>()
+
+        if (searchArticles) {
+            results.addAll(articleDao.searchArticles(query).map { SearchResult.ArticleResult(it) })
+        }
+        if (searchMaterials) {
+            results.addAll(materialDao.searchMaterials(query).map { SearchResult.MaterialResult(it) })
+        }
+
+        return results
     }
 }

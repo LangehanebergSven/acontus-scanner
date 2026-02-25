@@ -5,8 +5,10 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
@@ -65,8 +67,10 @@ fun ScannerApp() {
             // If not, redirect to login. This is a safeguard.
             val employeeId = mainViewModel.loggedInEmployeeId
             if (employeeId == null) {
-                navController.navigate("login") {
-                    popUpTo("main_graph") { inclusive = true }
+                LaunchedEffect(Unit) {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             } else {
                 ProcessConfigurationScreen(
@@ -90,37 +94,56 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController, mainView
         arguments = listOf(navArgument("processId") { type = NavType.LongType; defaultValue = 0L })
     ) {
         composable("main/{processId}") { backStackEntry ->
-            val parentEntry = backStackEntry.destination.parent?.route?.let {
-                navController.getBackStackEntry(it)
-            }
-            val scanningViewModel: ScanningViewModel = hiltViewModel(parentEntry!!)
-
-            val processId = backStackEntry.arguments?.getLong("processId") ?: 0L
-            MainScreen(
-                processId = processId,
-                rootNavController = navController,
-                scanningViewModel = scanningViewModel,
-                mainViewModel = mainViewModel,
-                onLogout = {
-                    navController.navigate("login") {
-                        popUpTo("main_graph/{processId}") { inclusive = true }
-                    }
-                },
-                onStartNewProcess = {
-                    // Navigate to process configuration
-                    navController.navigate("process_configuration")
+            val parentRoute = backStackEntry.destination.parent?.route ?: return@composable
+            // Try to get the parent entry safely. Wrapped in remember to avoid repeated lookups.
+            // Caught exception handles case where graph is being popped (e.g. logout).
+            val parentEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry(parentRoute)
+                } catch (e: Exception) {
+                    null
                 }
-            )
+            }
+
+            if (parentEntry != null) {
+                val scanningViewModel: ScanningViewModel = hiltViewModel(parentEntry)
+
+                val processId = backStackEntry.arguments?.getLong("processId") ?: 0L
+                MainScreen(
+                    processId = processId,
+                    rootNavController = navController,
+                    scanningViewModel = scanningViewModel,
+                    mainViewModel = mainViewModel,
+                    onLogout = {
+                        navController.navigate("login") {
+                            // Pop everything up to the root to ensure a clean state
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onStartNewProcess = {
+                        // Navigate to process configuration
+                        navController.navigate("process_configuration")
+                    }
+                )
+            }
         }
         composable("edit_configuration") { backStackEntry ->
-            val parentEntry = backStackEntry.destination.parent?.route?.let {
-                navController.getBackStackEntry(it)
+            val parentRoute = backStackEntry.destination.parent?.route ?: return@composable
+            val parentEntry = remember(backStackEntry) {
+                try {
+                    navController.getBackStackEntry(parentRoute)
+                } catch (e: Exception) {
+                    null
+                }
             }
-            val scanningViewModel: ScanningViewModel = hiltViewModel(parentEntry!!)
-            EditConfigurationScreen(
-                navController = navController,
-                viewModel = scanningViewModel
-            )
+
+            if (parentEntry != null) {
+                val scanningViewModel: ScanningViewModel = hiltViewModel(parentEntry)
+                EditConfigurationScreen(
+                    navController = navController,
+                    viewModel = scanningViewModel
+                )
+            }
         }
     }
 }

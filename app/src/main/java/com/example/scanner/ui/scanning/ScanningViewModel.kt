@@ -67,7 +67,10 @@ class ScanningViewModel @Inject constructor(
             searchJob?.cancel()
             searchJob = viewModelScope.launch {
                 delay(300) // Debounce
-                val results = searchItemsUseCase(query)
+                
+                val typeFilter = currentState.activeBookingReason?.type ?: currentState.processBookingReason.type
+                val results = searchItemsUseCase(query, typeFilter)
+                
                 val newState = _uiState.value
                 if (newState is ScanningUiState.Success) {
                     _uiState.value = newState.copy(searchResults = results)
@@ -129,6 +132,9 @@ class ScanningViewModel @Inject constructor(
             val currentState = _uiState.value as? ScanningUiState.Success ?: return@launch
 
             // 1. Explizit nur nach exakter EAN suchen
+            // Wir filtern hier nicht strikt nach Typ, da ein direkter Scan eindeutig sein sollte.
+            // Falls gewünscht, könnte man hier auch currentState.activeBookingReason?.type prüfen.
+
             val article = articleDao.getArticleByEan(barcode)
             val material = materialDao.getMaterialByEan(barcode)
 
@@ -435,16 +441,18 @@ class ScanningViewModel @Inject constructor(
         return items.map { item ->
             val (name, type, idString) = if (item.articleId != null) {
                 val article = articleDao.getArticleById(item.articleId)
-                Triple(article?.name ?: "Unknown Article", "Article", item.articleId)
+                Triple(article?.name ?: "Unbekannter Artikel", "Artikel", item.articleId)
             } else if (item.materialId != null) {
                 val material = materialDao.getMaterialById(item.materialId)
-                Triple(material?.name ?: "Unknown Material", "Material", item.materialId)
+                Triple(material?.name ?: "Unbekannter Material", "Material", item.materialId)
             } else {
-                Triple("Unknown Item", "Unknown", "")
+                Triple("Unbekannt", "Unbekannt", "")
             }
             
             val whName = warehouseMap[item.warehouseId]?.name ?: item.warehouseId
-            val reasonName = reasonMap[item.bookingReasonId]?.reason ?: item.bookingReasonId
+            val reason = reasonMap[item.bookingReasonId]
+            val reasonName = reason?.reason ?: item.bookingReasonId
+            val movementType = reason?.movementType ?: "Unbekannt"
             val mhd = item.bestBeforeDate?.let { mhdFormatter.format(it) }
 
             ScannedItemUi(
@@ -456,6 +464,7 @@ class ScanningViewModel @Inject constructor(
                 scannedAt = item.scannedAt,
                 warehouseName = whName,
                 bookingReasonName = reasonName,
+                movementType = movementType,
                 batchNumber = item.batchNumber,
                 bestBeforeDate = mhd
             )

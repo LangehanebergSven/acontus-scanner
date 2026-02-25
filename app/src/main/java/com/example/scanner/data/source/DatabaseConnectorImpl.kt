@@ -78,7 +78,9 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
         return executeSelect(query) { rs ->
             BookingReason(
                 bookingReasonId = rs.getString("id") ?: "",
-                reason = rs.getString("Name") ?: ""
+                reason = rs.getString("Name") ?: "",
+                type = rs.getString("Typ") ?: "Unknown",
+                movementType = rs.getString("Bewegung") ?: "Unknown"
             )
         }
     }
@@ -106,7 +108,7 @@ class DatabaseConnectorImpl @Inject constructor() : DatabaseConnector {
     }
 
     override suspend fun fetchEmployees(): List<Employee> {
-        val query = "SELECT PersonalNr, HemmePersonalNr, (Vorname + ' ' + Nachname) AS Name FROM Personal"
+        val query = "SELECT PersonalNr, HemmePersonalNr, (Vorname + ' ' + Nachname) AS Name FROM Personal WHERE HemmePersonalNr IS NOT NULL"
         return executeSelect(query) { rs ->
             Employee(
                 employeeId = rs.getString("PersonalNr") ?: "",

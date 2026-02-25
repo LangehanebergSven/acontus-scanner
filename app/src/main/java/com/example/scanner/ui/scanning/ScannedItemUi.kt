@@ -12,6 +12,7 @@ data class ScannedItemUi(
     // Configuration details
     val warehouseName: String,
     val bookingReasonName: String,
+    val movementType: String, // "Eingang", "Ausgang", "Inventur"
     val batchNumber: String?,
     val bestBeforeDate: String? // Formatted date
 )
