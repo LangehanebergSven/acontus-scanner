@@ -49,7 +49,6 @@ class SyncRepository @Inject constructor(
         val mhdFormatted = item.bestBeforeDate?.let { "'${sqlDateFormatter.format(it)}'" } ?: "NULL"
         val quantity = item.quantity
         val contentQuantity = "NULL"
-        val booked = "0"
         val scannedAt = sqlDateFormatter.format(item.scannedAt)
         val now = sqlDateFormatter.format(Date())
 
@@ -65,9 +64,9 @@ class SyncRepository @Inject constructor(
                 MHD, 
                 Menge,
                 Inhaltsmenge,
-                gebucht,
-                timestamp,
-                syncTimestamp
+                GebuchtAm,
+                Timestamp,
+                SyncTimestamp
             ) VALUES (
                 $articleId,
                 $materialId,
@@ -79,7 +78,7 @@ class SyncRepository @Inject constructor(
                 $mhdFormatted,
                 $quantity,
                 $contentQuantity,
-                $booked,
+                NULL,
                 '$scannedAt',
                 '$now'
             )

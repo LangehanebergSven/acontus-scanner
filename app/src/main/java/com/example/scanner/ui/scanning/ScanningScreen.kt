@@ -59,6 +59,8 @@ fun ScanningScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
     var isFabMenuExpanded by remember { mutableStateOf(false) }
+    var showCancelConfirmationDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 1. Broadcast Receiver für den Scanner
     DisposableEffect(Unit) {
@@ -90,8 +92,33 @@ fun ScanningScreen(
         }
     }
 
+    if (showCancelConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelConfirmationDialog = false },
+            title = { Text("Vorgang abbrechen?") },
+            text = { Text("Möchten Sie den Vorgang wirklich abbrechen? Alle bisherigen Scans gehen verloren.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.cancelProcess()
+                        showCancelConfirmationDialog = false
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Abbrechen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelConfirmationDialog = false }) {
+                    Text("Zurück")
+                }
+            }
+        )
+    }
+
     Scaffold(
         contentWindowInsets = ScaffoldDefaults.contentWindowInsets,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             val state = uiState
             if (state is ScanningUiState.Success && state.isMultiSelectMode) {
@@ -165,7 +192,7 @@ fun ScanningScreen(
                         DropdownMenuItem(
                             text = { Text("Abbrechen", color = MaterialTheme.colorScheme.error) },
                             onClick = {
-                                viewModel.cancelProcess()
+                                showCancelConfirmationDialog = true
                                 isFabMenuExpanded = false
                             },
                             leadingIcon = {
@@ -198,6 +225,11 @@ fun ScanningScreen(
                     )
                 }
                 is ScanningUiState.NoProcess -> {
+                    LaunchedEffect(state.successMessage) {
+                        state.successMessage?.let {
+                            snackbarHostState.showSnackbar(it)
+                        }
+                    }
                     NoProcessContent(
                         onStartProcess = onStartNewProcess
                     )

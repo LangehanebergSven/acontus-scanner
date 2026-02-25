@@ -20,8 +20,8 @@ class SettingsViewModel @Inject constructor(
     private val syncRepository: SyncRepository
 ) : ViewModel() {
 
-    private val _lastSyncTimestamp = MutableStateFlow(0L)
-    val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
+    // Directly use the StateFlow from MasterDataSynchronizer
+    val lastSyncTimestamp: StateFlow<Long> = masterDataSynchronizer.lastSyncTimestampFlow
 
     private val _uiEvent = MutableSharedFlow<SettingsUiEvent>()
     val uiEvent: SharedFlow<SettingsUiEvent> = _uiEvent.asSharedFlow()
@@ -38,8 +38,6 @@ class SettingsViewModel @Inject constructor(
                 
                 // Then fetch new master data
                 masterDataSynchronizer.performSync()
-                
-                _lastSyncTimestamp.value = System.currentTimeMillis()
                 
                 val message = if (uploadedCount > 0) {
                     "Synchronisation erfolgreich ($uploadedCount Scans hochgeladen)."

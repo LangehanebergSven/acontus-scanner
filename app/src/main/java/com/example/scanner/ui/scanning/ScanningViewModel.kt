@@ -245,18 +245,12 @@ class ScanningViewModel @Inject constructor(
             viewModelScope.launch {
                 val itemsToUpdate = currentState.rawScannedItems.filter { currentState.selectedItemIds.contains(it.id) }
                 
-                // If any field is null, we keep the original value? 
-                // Or does the dialog force selection?
-                // The dialog should probably pass the new values to apply.
-                // If the user selected a warehouse, we apply it. If they selected "No Change" (not implemented yet), we keep original.
-                // Assuming the dialog passes the *desired* new state for all selected items.
-                
                 val updatedItems = itemsToUpdate.map { item ->
                     item.copy(
                         warehouseId = warehouse?.warehouseId ?: item.warehouseId,
                         bookingReasonId = bookingReason?.bookingReasonId ?: item.bookingReasonId,
-                        batchNumber = batchNumber, // Nullable update
-                        bestBeforeDate = bestBeforeDate // Nullable update
+                        batchNumber = batchNumber, 
+                        bestBeforeDate = bestBeforeDate 
                     )
                 }
                 
@@ -362,12 +356,12 @@ class ScanningViewModel @Inject constructor(
             _uiState.value = ScanningUiState.Loading
             try {
                 if (processId == 0L) {
-                    _uiState.value = ScanningUiState.NoProcess
+                    _uiState.value = ScanningUiState.NoProcess()
                     return@launch
                 }
                 val process = scanRepository.getProcessById(processId)
                 if (process == null) {
-                    _uiState.value = ScanningUiState.NoProcess
+                    _uiState.value = ScanningUiState.NoProcess()
                     return@launch
                 }
                 loadScanData(process)
@@ -383,7 +377,7 @@ class ScanningViewModel @Inject constructor(
         val bookingReason = bookingReasonDao.getById(process.bookingReasonId)
 
         if (warehouse == null || bookingReason == null) {
-            _uiState.value = ScanningUiState.NoProcess
+            _uiState.value = ScanningUiState.NoProcess()
             return
         }
 
@@ -473,7 +467,7 @@ class ScanningViewModel @Inject constructor(
         if (currentState is ScanningUiState.Success) {
             viewModelScope.launch {
                 scanRepository.deleteProcess(currentState.process)
-                _uiState.value = ScanningUiState.NoProcess
+                _uiState.value = ScanningUiState.NoProcess()
             }
         }
     }
@@ -500,7 +494,6 @@ class ScanningViewModel @Inject constructor(
             
             try {
                 // Submit items using SyncRepository
-                // Create a copy of list to iterate safely while modifying DB
                 val itemsToSubmit = currentState.rawScannedItems.toList()
                 for (item in itemsToSubmit) {
                     syncRepository.submitScannedItem(item, currentState.process.employeeId)
@@ -510,7 +503,7 @@ class ScanningViewModel @Inject constructor(
                 
                 // Process submitted successfully (or logged for offline), delete local process
                 scanRepository.deleteProcess(currentState.process)
-                _uiState.value = ScanningUiState.NoProcess
+                _uiState.value = ScanningUiState.NoProcess("Daten erfolgreich gesendet!")
                 
             } catch (e: Exception) {
                 Log.e("ScanningViewModel", "Error submitting process", e)
@@ -586,7 +579,7 @@ class ScanningViewModel @Inject constructor(
 
 sealed interface ScanningUiState {
     object Loading : ScanningUiState
-    object NoProcess : ScanningUiState
+    data class NoProcess(val successMessage: String? = null) : ScanningUiState
     data class Success(
         val process: ScanProcess,
         val processWarehouse: Warehouse,

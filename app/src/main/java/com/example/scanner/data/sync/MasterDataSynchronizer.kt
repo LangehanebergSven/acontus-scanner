@@ -12,6 +12,9 @@ import com.example.scanner.data.local.dao.WarehouseDao
 import com.example.scanner.data.source.DatabaseConnector
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -29,6 +32,13 @@ class MasterDataSynchronizer @Inject constructor(
 ) {
     private val prefs: SharedPreferences = context.getSharedPreferences("scanner_prefs", Context.MODE_PRIVATE)
     private val KEY_LAST_SYNC = "last_master_data_sync"
+    
+    private val _lastSyncTimestampFlow = MutableStateFlow(prefs.getLong(KEY_LAST_SYNC, 0L))
+    val lastSyncTimestampFlow: StateFlow<Long> = _lastSyncTimestampFlow.asStateFlow()
+
+    fun getLastSyncTimestamp(): Long {
+        return prefs.getLong(KEY_LAST_SYNC, 0L)
+    }
 
     fun isSyncNeeded(): Boolean {
         val lastSync = prefs.getLong(KEY_LAST_SYNC, 0L)
@@ -62,7 +72,9 @@ class MasterDataSynchronizer @Inject constructor(
             employeeDao.insertAll(employees)
 
             // 4. Update timestamp
-            prefs.edit { putLong(KEY_LAST_SYNC, System.currentTimeMillis()) }
+            val now = System.currentTimeMillis()
+            prefs.edit { putLong(KEY_LAST_SYNC, now) }
+            _lastSyncTimestampFlow.value = now
             Log.i("MasterDataSynchronizer", "Master data synchronization successful.")
         } catch (e: Exception) {
             Log.e("MasterDataSynchronizer", "Master data synchronization failed.", e)

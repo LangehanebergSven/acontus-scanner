@@ -54,7 +54,7 @@ fun SettingsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = { 
                     Text(
                         "Einstellungen",
@@ -71,11 +71,10 @@ fun SettingsScreen(
                         Text("Abmelden")
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                     titleContentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)
+                )
             )
         }
     ) { padding ->
@@ -89,15 +88,15 @@ fun SettingsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 InfoCard()
                 Spacer(modifier = Modifier.height(32.dp))
-                CacheCard(
+                MasterDataCard(
                     lastSyncTimestamp = lastSyncTimestamp,
                     isLoading = isLoading,
-                    onClearCache = { viewModel.onClearCacheClicked() }
+                    onUpdateMasterData = { viewModel.onClearCacheClicked() }
                 )
             }
             
@@ -151,9 +150,21 @@ private fun InfoCard() {
 }
 
 @Composable
-private fun CacheCard(lastSyncTimestamp: Long, isLoading: Boolean, onClearCache: () -> Unit) {
+private fun MasterDataCard(lastSyncTimestamp: Long, isLoading: Boolean, onUpdateMasterData: () -> Unit) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Stammdaten",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Stammdaten umfassen Artikel, Lager und Mitarbeiter. Diese werden lokal gespeichert, um das Arbeiten ohne Internetverbindung zu ermöglichen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+
             val formattedDate = if (lastSyncTimestamp > 0) {
                 val date = Date(lastSyncTimestamp)
                 SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.GERMANY).format(date)
@@ -162,12 +173,12 @@ private fun CacheCard(lastSyncTimestamp: Long, isLoading: Boolean, onClearCache:
             }
             SettingItem(
                 icon = Icons.Default.Storage,
-                title = "Letzte Cache-Aktualisierung",
+                title = "Letzte Aktualisierung",
                 value = formattedDate
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = onClearCache,
+                onClick = onUpdateMasterData,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading
             ) {
@@ -177,7 +188,7 @@ private fun CacheCard(lastSyncTimestamp: Long, isLoading: Boolean, onClearCache:
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("Cache jetzt leeren")
+                    Text("Stammdaten jetzt aktualisieren")
                 }
             }
         }
