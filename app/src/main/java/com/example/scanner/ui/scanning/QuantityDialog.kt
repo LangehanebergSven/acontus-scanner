@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -17,10 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -29,8 +33,9 @@ import androidx.compose.ui.unit.dp
 fun QuantityDialog(
     itemName: String,
     initialQuantity: Int = 1,
+    initialContentQuantity: Int? = null,
     confirmButtonText: String = "Hinzufügen",
-    onConfirm: (Int) -> Unit,
+    onConfirm: (Int, Int?) -> Unit,
     onDismiss: () -> Unit
 ) {
     val initialText = initialQuantity.toString()
@@ -43,7 +48,19 @@ fun QuantityDialog(
             )
         ) 
     }
+    
+    val initialContentText = initialContentQuantity?.toString() ?: ""
+    var contentQuantityValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = initialContentText,
+                selection = TextRange(0, initialContentText.length)
+            )
+        )
+    }
+
     val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
@@ -67,7 +84,13 @@ fun QuantityDialog(
                     },
                     label = { Text("Menge") },
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    ),
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester)
@@ -77,14 +100,48 @@ fun QuantityDialog(
                             }
                         }
                 )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                OutlinedTextField(
+                    value = contentQuantityValue,
+                    onValueChange = { newValue ->
+                        if (newValue.text.all { char -> char.isDigit() }) {
+                            contentQuantityValue = newValue
+                        }
+                    },
+                    label = { Text("Inhaltsmenge (optional)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                             val quantity = quantityValue.text.toIntOrNull() ?: 0
+                            val contentQuantity = contentQuantityValue.text.toIntOrNull()
+                            if (quantity > 0) {
+                                onConfirm(quantity, contentQuantity)
+                            }
+                        }
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                contentQuantityValue = contentQuantityValue.copy(selection = TextRange(0, contentQuantityValue.text.length))
+                            }
+                        }
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     val quantity = quantityValue.text.toIntOrNull() ?: 0
+                    val contentQuantity = contentQuantityValue.text.toIntOrNull()
                     if (quantity > 0) {
-                        onConfirm(quantity)
+                        onConfirm(quantity, contentQuantity)
                     }
                 }
             ) {

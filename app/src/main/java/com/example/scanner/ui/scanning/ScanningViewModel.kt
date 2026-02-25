@@ -149,13 +149,19 @@ class ScanningViewModel @Inject constructor(
             }
 
             // 2. Artikel mit Menge 1 hinzufügen oder vorhandenen hochzählen
+            // Wichtig: Beim direkten Scan nehmen wir an, dass keine Inhaltsmenge (null) gemeint ist,
+            // oder wir könnten konfigurieren, ob eine Standard-Inhaltsmenge genutzt wird.
+            // Hier: contentQuantity = null (Standard)
+            val contentQuantity: Int? = null
+
             val existingItem = currentState.rawScannedItems.find {
                 it.articleId == articleId &&
                 it.materialId == materialId &&
                 it.warehouseId == (currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId) &&
                 it.bookingReasonId == (currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId) &&
                 it.batchNumber == currentState.activeBatchNumber &&
-                it.bestBeforeDate == currentState.activeBestBeforeDate
+                it.bestBeforeDate == currentState.activeBestBeforeDate &&
+                it.contentQuantity == contentQuantity // Unterscheidung auch nach Inhaltsmenge
             }
 
             if (existingItem != null) {
@@ -169,7 +175,7 @@ class ScanningViewModel @Inject constructor(
                     articleId = articleId,
                     materialId = materialId,
                     quantity = 1,
-                    contentQuantity = null,
+                    contentQuantity = contentQuantity,
                     warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId,
                     bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId,
                     batchNumber = currentState.activeBatchNumber,
@@ -296,14 +302,23 @@ class ScanningViewModel @Inject constructor(
         }
     }
 
-    fun onQuantityConfirmed(quantity: Int) {
+    fun onQuantityConfirmed(quantity: Int, contentQuantity: Int?) {
         val currentState = _uiState.value as? ScanningUiState.Success ?: return
 
         viewModelScope.launch {
             if (currentState.editingItem != null) {
+                // Editing existing item
+                // If contentQuantity changed, we might need to merge with another existing item?
+                // For simplicity, we just update the item. If the user changes contentQuantity to something that already exists,
+                // strictly speaking we should merge them, but let's just update for now. 
+                // Or: Check if another item exists with same props AND new contentQuantity.
+                
                 val existingItem = currentState.rawScannedItems.find { it.id == currentState.editingItem.id }
                 if (existingItem != null) {
-                    val updatedItem = existingItem.copy(quantity = quantity)
+                    val updatedItem = existingItem.copy(
+                        quantity = quantity,
+                        contentQuantity = contentQuantity
+                    )
                     scanRepository.updateScannedItem(updatedItem)
                     lastUpdatedItemId = updatedItem.id
                 }
@@ -320,7 +335,8 @@ class ScanningViewModel @Inject constructor(
                     it.warehouseId == (currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId) &&
                     it.bookingReasonId == (currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId) &&
                     it.batchNumber == currentState.activeBatchNumber &&
-                    it.bestBeforeDate == currentState.activeBestBeforeDate
+                    it.bestBeforeDate == currentState.activeBestBeforeDate &&
+                    it.contentQuantity == contentQuantity // Check contentQuantity as well
                 }
 
                 if (existingItem != null) {
@@ -334,7 +350,7 @@ class ScanningViewModel @Inject constructor(
                         articleId = articleId,
                         materialId = materialId,
                         quantity = quantity,
-                        contentQuantity = null,
+                        contentQuantity = contentQuantity,
                         warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId,
                         bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId,
                         batchNumber = currentState.activeBatchNumber,
@@ -461,6 +477,7 @@ class ScanningViewModel @Inject constructor(
                 itemName = name,
                 itemType = type,
                 quantity = item.quantity,
+                contentQuantity = item.contentQuantity,
                 scannedAt = item.scannedAt,
                 warehouseName = whName,
                 bookingReasonName = reasonName,

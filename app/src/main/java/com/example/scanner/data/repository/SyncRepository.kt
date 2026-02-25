@@ -48,7 +48,7 @@ class SyncRepository @Inject constructor(
         val batchStr = item.batchNumber?.let { "'$it'" } ?: "NULL"
         val mhdFormatted = item.bestBeforeDate?.let { "'${sqlDateFormatter.format(it)}'" } ?: "NULL"
         val quantity = item.quantity
-        val contentQuantity = "NULL"
+        val contentQuantity = item.contentQuantity ?: "NULL"
         val scannedAt = sqlDateFormatter.format(item.scannedAt)
         val now = sqlDateFormatter.format(Date())
 

@@ -246,11 +246,14 @@ fun ScanningScreen(
                             } ?: ""
                             
                         val initialQuantity = state.editingItem?.quantity ?: 1
+                        val initialContentQuantity = state.editingItem?.contentQuantity
+                        
                         val confirmText = if (state.editingItem != null) "Speichern" else "Hinzufügen"
 
                         QuantityDialog(
                             itemName = itemName,
                             initialQuantity = initialQuantity,
+                            initialContentQuantity = initialContentQuantity,
                             confirmButtonText = confirmText,
                             onConfirm = viewModel::onQuantityConfirmed,
                             onDismiss = viewModel::onQuantityDialogDismissed
@@ -625,9 +628,14 @@ fun ScannedItemRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (!item.batchNumber.isNullOrEmpty() || !item.bestBeforeDate.isNullOrEmpty()) {
+                if (!item.batchNumber.isNullOrEmpty() || !item.bestBeforeDate.isNullOrEmpty() || item.contentQuantity != null) {
+                    var details = ""
+                    if (!item.batchNumber.isNullOrEmpty()) details += "Charge: ${item.batchNumber} | "
+                    if (!item.bestBeforeDate.isNullOrEmpty()) details += "MHD: ${item.bestBeforeDate} | "
+                    if (item.contentQuantity != null) details += "Inhalt: ${item.contentQuantity}"
+                    
                     Text(
-                        text = "Charge: ${item.batchNumber ?: "-"} | MHD: ${item.bestBeforeDate ?: "-"}",
+                        text = details.trimEnd('|', ' '),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -8,6 +8,7 @@ data class ScannedItemUi(
     val itemName: String,
     val itemType: String, // "Artikel" or "Material"
     val quantity: Int,
+    val contentQuantity: Int?,
     val scannedAt: Date,
     // Configuration details
     val warehouseName: String,
