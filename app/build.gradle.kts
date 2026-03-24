@@ -29,14 +29,18 @@ android {
             buildConfigField("String", "DB_PASSWORD", "\"\$Axyzwert123\"")
         }
         release {
-            isMinifyEnabled = false
+            // Enables code-related app optimization.
+            isMinifyEnabled = true
+
+            // Enables resource shrinking.
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "DB_URL", "\"jdbc:jtds:sqlserver://192.168.2.3:1433/Daten_Hemme_Schmargendorf_251221;ssl=require\"")
-            buildConfigField("String", "DB_USER", "\"daten_user\"")
-            buildConfigField("String", "DB_PASSWORD", "\"\$Axyzwert123\"")
+            buildConfigField("String", "DB_URL", "\"jdbc:jtds:sqlserver://10.1.130.223/Daten_Hemme\"")
+            buildConfigField("String", "DB_USER", "\"sa\"")
+            buildConfigField("String", "DB_PASSWORD", $$"\"$Jxyzwert123\"")
         }
     }
 
@@ -52,6 +56,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

@@ -131,19 +131,19 @@ private fun InfoCard() {
             SettingItem(
                 icon = Icons.Default.Info,
                 title = "App Version",
-                value = "1.0.0 (Dummy)"
+                value = "1.0.0"
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SettingItem(
                 icon = Icons.Default.Info,
                 title = "Build-Nummer",
-                value = "20240729-01 (Dummy)"
+                value = "20250226-01"
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             SettingItem(
                 icon = Icons.Default.Info,
                 title = "Unternehmen",
-                value = "Musterfirma GmbH"
+                value = "Hemme Milch GmbH & Co. KG"
             )
         }
     }
