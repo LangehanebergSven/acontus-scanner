@@ -8,12 +8,12 @@ data class ScannedItemUi(
     val itemName: String,
     val itemType: String, // "Artikel" or "Material"
     val quantity: Int,
-    val contentQuantity: Int?,
     val scannedAt: Date,
     // Configuration details
     val warehouseName: String,
     val bookingReasonName: String,
     val movementType: String, // "Eingang", "Ausgang", "Inventur"
     val batchNumber: String?,
-    val bestBeforeDate: String? // Formatted date
+    val bestBeforeDate: String?, // Formatted date
+    val bestBeforeDateObj: Date? // Date object for editing
 )

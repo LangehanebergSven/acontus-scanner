@@ -47,6 +47,7 @@ class ScanningViewModel @Inject constructor(
 
     private var searchJob: Job? = null
     private var lastUpdatedItemId: Long? = null
+    private var lastProcessedItemId: Long? = null
     private val mhdFormatter = SimpleDateFormat("dd.MM.yyyy", Locale.GERMANY)
 
     var isSearchFieldFocused: Boolean = false
@@ -131,61 +132,70 @@ class ScanningViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value as? ScanningUiState.Success ?: return@launch
 
-            // 1. Explizit nur nach exakter EAN suchen
-            // Wir filtern hier nicht strikt nach Typ, da ein direkter Scan eindeutig sein sollte.
-            // Falls gewünscht, könnte man hier auch currentState.activeBookingReason?.type prüfen.
-
             val article = articleDao.getArticleByEan(barcode)
             val material = materialDao.getMaterialByEan(barcode)
 
-            val (articleId, materialId) = when {
-                article != null -> article.articleId to null
-                material != null -> null to material.materialId
-                else -> {
-                    Log.w("Scanner", "Kein Artikel oder Material gefunden für EAN: $barcode")
-                    _uiState.value = currentState.copy(scanError = "Kein Artikel oder Material gefunden für EAN: $barcode")
-                    return@launch
+            if (article == null && material == null) {
+                Log.w("Scanner", "Kein Artikel oder Material gefunden für EAN: $barcode")
+                _uiState.value = currentState.copy(scanError = "Kein Artikel oder Material gefunden für EAN: $barcode")
+                return@launch
+            }
+
+            if (material != null) {
+                val materialId = material.materialId
+                val finalMhd = currentState.activeBestBeforeDate
+
+                val existingItem = currentState.rawScannedItems.find {
+                    it.materialId == materialId &&
+                    it.warehouseId == (currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId) &&
+                    it.bookingReasonId == (currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId) &&
+                    it.batchNumber == currentState.activeBatchNumber &&
+                    it.bestBeforeDate == finalMhd
+                }
+
+                if (existingItem != null) {
+                    val updatedItem = existingItem.copy(quantity = existingItem.quantity + 1)
+                    scanRepository.updateScannedItem(updatedItem)
+                    lastUpdatedItemId = updatedItem.id
+                    lastProcessedItemId = updatedItem.id
+                } else {
+                    val newItem = ScannedItem(
+                        id = 0,
+                        scanProcessId = currentState.process.id,
+                        articleId = null,
+                        materialId = materialId,
+                        quantity = 1,
+                        warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId,
+                        bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId,
+                        batchNumber = currentState.activeBatchNumber,
+                        bestBeforeDate = finalMhd,
+                        scannedAt = Date()
+                    )
+                    val newId = scanRepository.addScannedItem(newItem)
+                    lastUpdatedItemId = newId
+                    lastProcessedItemId = newId
+                }
+                loadActiveProcess(currentState.process.id)
+            } else if (article != null) {
+                val articleId = article.articleId
+                val lastItem = currentState.rawScannedItems.find { it.id == lastProcessedItemId }
+
+                if (lastItem != null && lastItem.articleId == articleId) {
+                    // Same article as before, just increment
+                    val updatedItem = lastItem.copy(quantity = lastItem.quantity + 1)
+                    scanRepository.updateScannedItem(updatedItem)
+                    lastUpdatedItemId = updatedItem.id
+                    lastProcessedItemId = updatedItem.id
+                    loadActiveProcess(currentState.process.id)
+                } else {
+                    // Different article, show dialog
+                    _uiState.value = currentState.copy(
+                        showQuantityDialog = true,
+                        selectedSearchResult = SearchResult.ArticleResult(article),
+                        editingItem = null
+                    )
                 }
             }
-
-            // 2. Artikel mit Menge 1 hinzufügen oder vorhandenen hochzählen
-            // Wichtig: Beim direkten Scan nehmen wir an, dass keine Inhaltsmenge (null) gemeint ist,
-            // oder wir könnten konfigurieren, ob eine Standard-Inhaltsmenge genutzt wird.
-            // Hier: contentQuantity = null (Standard)
-            val contentQuantity: Int? = null
-
-            val existingItem = currentState.rawScannedItems.find {
-                it.articleId == articleId &&
-                it.materialId == materialId &&
-                it.warehouseId == (currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId) &&
-                it.bookingReasonId == (currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId) &&
-                it.batchNumber == currentState.activeBatchNumber &&
-                it.bestBeforeDate == currentState.activeBestBeforeDate &&
-                it.contentQuantity == contentQuantity // Unterscheidung auch nach Inhaltsmenge
-            }
-
-            if (existingItem != null) {
-                val updatedItem = existingItem.copy(quantity = existingItem.quantity + 1)
-                scanRepository.updateScannedItem(updatedItem)
-                lastUpdatedItemId = updatedItem.id
-            } else {
-                val newItem = ScannedItem(
-                    id = 0,
-                    scanProcessId = currentState.process.id,
-                    articleId = articleId,
-                    materialId = materialId,
-                    quantity = 1,
-                    contentQuantity = contentQuantity,
-                    warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId,
-                    bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId,
-                    batchNumber = currentState.activeBatchNumber,
-                    bestBeforeDate = currentState.activeBestBeforeDate,
-                    scannedAt = Date()
-                )
-                lastUpdatedItemId = scanRepository.addScannedItem(newItem)
-            }
-
-            loadActiveProcess(currentState.process.id)
         }
     }
 
@@ -302,25 +312,28 @@ class ScanningViewModel @Inject constructor(
         }
     }
 
-    fun onQuantityConfirmed(quantity: Int, contentQuantity: Int?) {
+    fun onQuantityConfirmed(quantity: Int, mhd: Date?) {
         val currentState = _uiState.value as? ScanningUiState.Success ?: return
 
         viewModelScope.launch {
             if (currentState.editingItem != null) {
                 // Editing existing item
-                // If contentQuantity changed, we might need to merge with another existing item?
-                // For simplicity, we just update the item. If the user changes contentQuantity to something that already exists,
-                // strictly speaking we should merge them, but let's just update for now. 
-                // Or: Check if another item exists with same props AND new contentQuantity.
-                
+                val isMaterial = currentState.editingItem.itemType == "Material"
+                val finalMhd = if (isMaterial) currentState.editingItem.bestBeforeDateObj else mhd
+
                 val existingItem = currentState.rawScannedItems.find { it.id == currentState.editingItem.id }
                 if (existingItem != null) {
                     val updatedItem = existingItem.copy(
                         quantity = quantity,
-                        contentQuantity = contentQuantity
+                        bestBeforeDate = finalMhd
                     )
                     scanRepository.updateScannedItem(updatedItem)
                     lastUpdatedItemId = updatedItem.id
+                    lastProcessedItemId = updatedItem.id
+                }
+
+                if (!isMaterial) {
+                    setActiveBestBeforeDate(finalMhd)
                 }
             } else if (currentState.selectedSearchResult != null) {
                 val result = currentState.selectedSearchResult
@@ -329,20 +342,23 @@ class ScanningViewModel @Inject constructor(
                     is SearchResult.MaterialResult -> null to result.material.materialId
                 }
 
+                val isMaterial = materialId != null
+                val finalMhd = if (isMaterial) currentState.activeBestBeforeDate else mhd
+
                 val existingItem = currentState.rawScannedItems.find { 
                     it.articleId == articleId &&
                     it.materialId == materialId &&
                     it.warehouseId == (currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId) &&
                     it.bookingReasonId == (currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId) &&
                     it.batchNumber == currentState.activeBatchNumber &&
-                    it.bestBeforeDate == currentState.activeBestBeforeDate &&
-                    it.contentQuantity == contentQuantity // Check contentQuantity as well
+                    it.bestBeforeDate == finalMhd
                 }
 
                 if (existingItem != null) {
                     val updatedItem = existingItem.copy(quantity = existingItem.quantity + quantity)
                     scanRepository.updateScannedItem(updatedItem)
                     lastUpdatedItemId = updatedItem.id
+                    lastProcessedItemId = updatedItem.id
                 } else {
                     val newItem = ScannedItem(
                         id = 0,
@@ -350,14 +366,19 @@ class ScanningViewModel @Inject constructor(
                         articleId = articleId,
                         materialId = materialId,
                         quantity = quantity,
-                        contentQuantity = contentQuantity,
                         warehouseId = currentState.activeWarehouse?.warehouseId ?: currentState.processWarehouse.warehouseId,
                         bookingReasonId = currentState.activeBookingReason?.bookingReasonId ?: currentState.processBookingReason.bookingReasonId,
                         batchNumber = currentState.activeBatchNumber,
-                        bestBeforeDate = currentState.activeBestBeforeDate,
+                        bestBeforeDate = finalMhd,
                         scannedAt = Date()
                     )
-                    lastUpdatedItemId = scanRepository.addScannedItem(newItem)
+                    val newId = scanRepository.addScannedItem(newItem)
+                    lastUpdatedItemId = newId
+                    lastProcessedItemId = newId
+                }
+
+                if (!isMaterial) {
+                    setActiveBestBeforeDate(finalMhd)
                 }
             }
             
@@ -477,13 +498,13 @@ class ScanningViewModel @Inject constructor(
                 itemName = name,
                 itemType = type,
                 quantity = item.quantity,
-                contentQuantity = item.contentQuantity,
                 scannedAt = item.scannedAt,
                 warehouseName = whName,
                 bookingReasonName = reasonName,
                 movementType = movementType,
                 batchNumber = item.batchNumber,
-                bestBeforeDate = mhd
+                bestBeforeDate = mhd,
+                bestBeforeDateObj = item.bestBeforeDate
             )
         }
     }

@@ -246,14 +246,17 @@ fun ScanningScreen(
                             } ?: ""
                             
                         val initialQuantity = state.editingItem?.quantity ?: 1
-                        val initialContentQuantity = state.editingItem?.contentQuantity
+                        
+                        val isArticle = state.editingItem?.itemType == "Artikel" || state.selectedSearchResult is SearchResult.ArticleResult
+                        val initialMhd = state.editingItem?.bestBeforeDateObj ?: state.activeBestBeforeDate
                         
                         val confirmText = if (state.editingItem != null) "Speichern" else "Hinzufügen"
 
                         QuantityDialog(
                             itemName = itemName,
                             initialQuantity = initialQuantity,
-                            initialContentQuantity = initialContentQuantity,
+                            showMhdField = isArticle,
+                            initialMhd = initialMhd,
                             confirmButtonText = confirmText,
                             onConfirm = viewModel::onQuantityConfirmed,
                             onDismiss = viewModel::onQuantityDialogDismissed
@@ -628,11 +631,10 @@ fun ScannedItemRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (!item.batchNumber.isNullOrEmpty() || !item.bestBeforeDate.isNullOrEmpty() || item.contentQuantity != null) {
+                if (!item.batchNumber.isNullOrEmpty() || !item.bestBeforeDate.isNullOrEmpty()) {
                     var details = ""
                     if (!item.batchNumber.isNullOrEmpty()) details += "Charge: ${item.batchNumber} | "
                     if (!item.bestBeforeDate.isNullOrEmpty()) details += "MHD: ${item.bestBeforeDate} | "
-                    if (item.contentQuantity != null) details += "Inhalt: ${item.contentQuantity}"
                     
                     Text(
                         text = details.trimEnd('|', ' '),

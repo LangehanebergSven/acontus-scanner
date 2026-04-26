@@ -16,7 +16,7 @@ import com.example.scanner.data.model.*
         ScanProcess::class,
         ScannedItem::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
